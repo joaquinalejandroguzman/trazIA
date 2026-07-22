@@ -48,6 +48,8 @@ Cualquier cambio al contrato requiere actualizar `src/shared/types.ts` y los age
 - **Sin estado entre invocaciones Lambda** — cada llamada es stateless; el estado persiste en DynamoDB
 - **Tipos explícitos en TypeScript** — no usar `any`; si el tipo es desconocido, usar `unknown` y narrowing
 - **Errores con contexto** — loggear siempre con `{ agente, módulo, error }` para facilitar debugging en CloudWatch
+- **Dependency injection en servicios** — las dependencias se pasan como parámetro, no se instancian adentro; facilita testear los agentes sin AWS
+- **Hooks personalizados en React** para la lógica reutilizable del frontend
 
 ## Anti-patrones (evitar)
 
