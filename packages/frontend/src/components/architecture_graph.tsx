@@ -12,6 +12,7 @@ const GraphContent: React.FC = () => {
   return (
     // Contenedor con dimensiones explícitas para evitar errores de ReactFlow
     <div style={{ width: '100%', height: '100vh' }}>
+      <h2>Aqui va el grafico</h2>
       <ReactFlow nodes={[]} edges={[]} />
     </div>
   )
