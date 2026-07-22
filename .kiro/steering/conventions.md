@@ -1,43 +1,71 @@
 ---
-inclusion: manual
+inclusion: always
 ---
 
 # Convenciones y Estándares
 
-Este archivo es de inclusión MANUAL — actívalo en el chat con `#conventions` cuando quieras que Kiro lo tenga en cuenta.
-Úsalo para reglas detalladas de código, patrones a seguir y anti-patrones a evitar.
-
----
-
 ## Nomenclatura
 
-<!-- Define cómo nombrar cosas. Por ejemplo:
-- Funciones: verbos en snake_case → get_user_by_id()
-- Clases: PascalCase → UserService
-- Constantes: UPPER_SNAKE_CASE → MAX_RETRIES
-- Archivos: snake_case → user_service.py
--->
+- **Variables y funciones:** camelCase → `getSpecScore()`, `repoUrl`
+- **Clases e interfaces:** PascalCase → `AnalyzerAgent`, `ModuleNode`
+- **Constantes:** UPPER_SNAKE_CASE → `MAX_RETRIES`, `BEDROCK_REGION`
+- **Archivos TypeScript/JS:** camelCase → `analyzerAgent.ts`, `specHealthScore.ts`
+- **Comentarios:** en español, siempre
+
+## Estructura de agentes
+
+Cada agente vive en su propia carpeta bajo `src/agents/`:
+
+```
+src/agents/<nombre-agente>/
+  index.ts        → handler Lambda (punto de entrada)
+  <nombre>.ts     → lógica principal del agente
+  types.ts        → tipos locales del agente (si los hay)
+```
+
+Los tipos y contratos compartidos entre agentes van en `src/shared/`.
+
+## Contrato JSON entre agentes
+
+Los agentes se comunican con un contrato JSON estricto. Todo tipo compartido vive en `src/shared/types.ts`. Ejemplo de estructura base:
+
+```typescript
+// Nodo del grafo que todos los agentes conocen
+interface ModuleNode {
+  id: string;           // ruta relativa del módulo
+  name: string;
+  specStatus: 'traced' | 'drift' | 'untraced';
+  specHealthScore: number; // 0–100
+  dependencies: string[]; // ids de otros ModuleNode
+}
+```
+
+Cualquier cambio al contrato requiere actualizar `src/shared/types.ts` y los agentes que lo consumen.
 
 ## Patrones preferidos
 
-<!-- Indica qué patrones arquitectónicos usar. Por ejemplo:
-- Repository pattern para acceso a datos
-- Dependency injection en servicios
-- Hooks personalizados en React para lógica reutilizable
--->
+- **Un agente, una responsabilidad** — el Analizador no infiere specs, el Redactor EARS no calcula scores
+- **Sin estado entre invocaciones Lambda** — cada llamada es stateless; el estado persiste en DynamoDB
+- **Tipos explícitos en TypeScript** — no usar `any`; si el tipo es desconocido, usar `unknown` y narrowing
+- **Errores con contexto** — loggear siempre con `{ agente, módulo, error }` para facilitar debugging en CloudWatch
 
 ## Anti-patrones (evitar)
 
-<!-- Lo que Kiro NO debe hacer. Por ejemplo:
-- No usar lógica de negocio directamente en los endpoints
-- No hacer queries directas a BD desde los componentes React
-- No usar any en TypeScript
--->
+- No poner lógica de negocio directamente en el handler Lambda (`index.ts`)
+- No hacer llamadas a Bedrock desde el frontend — siempre a través de la API
+- No asumir que el repo analizado tiene estructura conocida — todo acceso al árbol de archivos debe ser defensivo
+- No usar `any` en TypeScript
+- No mezclar recursos AWS entre las dos cuentas del equipo en producción
 
-## Manejo de errores
+## Commits
 
-<!-- Cómo manejar errores en el proyecto. Por ejemplo:
-- Usar excepciones personalizadas que hereden de AppException
-- Siempre loggear errores con contexto suficiente
-- Retornar errores HTTP con estructura { error: string, detail: string }
--->
+Formato Conventional Commits:
+
+```
+feat: agrega cálculo de Spec Health Score por módulo
+fix: corrige parsing de imports circulares en el Analizador
+chore: actualiza tipos compartidos del contrato entre agentes
+docs: actualiza steering con convenciones de agentes
+```
+
+Tipos válidos: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`
