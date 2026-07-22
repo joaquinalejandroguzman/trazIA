@@ -1,0 +1,15 @@
+# Esta carpeta contiene los specs de features.
+# 
+# Un spec es un flujo estructurado para desarrollar una funcionalidad compleja:
+#   requirements.md → design.md → tasks.md → implementación
+#
+# Para crear un spec:
+#   1. Cambia a modo "Spec" en Kiro (selector arriba del chat)
+#   2. Describe la feature que quieres construir
+#   3. Kiro generará automáticamente la carpeta y archivos del spec aquí
+#
+# Cada spec vive en su propia subcarpeta:
+#   .kiro/specs/nombre-del-feature/
+#     requirements.md   → qué debe hacer (historias de usuario)
+#     design.md         → cómo se va a construir (arquitectura)
+#     tasks.md          → lista de tareas de implementación

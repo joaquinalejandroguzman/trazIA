@@ -1,0 +1,29 @@
+{
+  /**
+   * Configuración de servidores MCP (Model Context Protocol)
+   * 
+   * MCP permite conectar Kiro con herramientas externas: bases de datos,
+   * APIs, servicios de documentación, etc.
+   * 
+   * Para agregar un servidor:
+   * 1. Agrega una entrada en "mcpServers" con un nombre descriptivo
+   * 2. Define "command" y "args" para ejecutarlo
+   * 3. Agrega variables de entorno sensibles en "env"
+   * 4. Lista las herramientas que quieres aprobar automáticamente en "autoApprove"
+   * 
+   * Ejemplo de servidor usando uvx (requiere instalar uv: https://docs.astral.sh/uv/):
+   * 
+   * "mi-servidor": {
+   *   "command": "uvx",
+   *   "args": ["nombre-del-paquete@latest"],
+   *   "env": {
+   *     "API_KEY": "tu-clave-aqui"
+   *   },
+   *   "disabled": false,
+   *   "autoApprove": ["nombre_herramienta"]
+   * }
+   */
+  "mcpServers": {
+    // Agrega tus servidores MCP aquí
+  }
+}
