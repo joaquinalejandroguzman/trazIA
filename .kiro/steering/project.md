@@ -47,7 +47,10 @@ El núcleo del producto no es el grafo: es la trazabilidad. El grafo es la inter
 - **Backend:** Node.js / TypeScript
 - **Frontend:** React + react-flow (grafo interactivo)
 - **Agentes:** AWS Lambda (una función por agente)
-- **IA:** AWS Bedrock — Claude Haiku (Analizador), Claude Sonnet (Redactor EARS)
+- **IA:** AWS Bedrock en `sa-east-1` (São Paulo), vía AnthropicBedrockMantle
+  (`@anthropic-ai/bedrock-sdk`) — `anthropic.claude-haiku-4-5` (Analizador),
+  `anthropic.claude-sonnet-4-6` (Redactor EARS). IDs y región por variable
+  de entorno, nunca hardcodeados.
 - **Persistencia:** DynamoDB (histórico de Spec Health Score), S3 (hosting frontend)
 - **Specs del producto:** formato EARS, guardadas en `.kiro/specs/`
 
