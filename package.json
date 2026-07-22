@@ -1,0 +1,25 @@
+{
+  "name": "trazia",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/backend",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently --names \"backend,frontend\" \"npm run dev -w packages/backend\" \"npm run dev -w packages/frontend\"",
+    "build": "npm-run-all build:backend build:frontend",
+    "lint": "npm-run-all lint:backend lint:frontend",
+    "test": "npm-run-all test:backend test:frontend",
+    "build:backend": "npm run build -w packages/backend",
+    "build:frontend": "npm run build -w packages/frontend",
+    "lint:backend": "npm run lint -w packages/backend",
+    "lint:frontend": "npm run lint -w packages/frontend",
+    "test:backend": "npm run test -w packages/backend",
+    "test:frontend": "npm run test -w packages/frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "npm-run-all": "^4.1.5"
+  }
+}

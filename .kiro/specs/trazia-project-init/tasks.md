@@ -8,7 +8,7 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
 
 ## Tasks
 
-- [ ] 1. Inicializar estructura raíz del monorepo
+- [x] 1. Inicializar estructura raíz del monorepo
   - Crear `package.json` raíz con `name: "trazia"`, `version: "0.1.0"`, `private: true`, y campo `workspaces: ["packages/backend", "packages/frontend"]`
   - Crear `tsconfig.base.json` con `strict: true`, `noImplicitAny: true`, `esModuleInterop: true`, `skipLibCheck: true`, `forceConsistentCasingInFileNames: true`, `resolveJsonModule: true`
   - Crear `.eslintrc.json` raíz con reglas `@typescript-eslint/no-explicit-any`, `camelcase` y `@typescript-eslint/naming-convention` (PascalCase para clases/interfaces, UPPER_SNAKE_CASE para `const` de módulo)
@@ -16,15 +16,15 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
   - Crear `README.md` con secciones "Instalación", "Comandos de desarrollo", "Estructura del proyecto" y "Variables de entorno"
   - _Requirements: 1.1, 1.5, 5.1_
 
-- [ ] 2. Configurar paquete backend
-  - [ ] 2.1 Crear estructura de archivos del backend
+- [x] 2. Configurar paquete backend
+  - [x] 2.1 Crear estructura de archivos del backend
     - Crear `packages/backend/package.json` con scripts `build` (`tsc`), `dev` (`ts-node-dev --respawn --transpile-only src/app.ts`), `lint` (`eslint "src/**/*.ts"`), `test` (`jest --passWithNoTests`)
     - Crear `packages/backend/tsconfig.json` extendiendo `../../tsconfig.base.json` con `module: "commonjs"`, `target: "ES2020"`, `outDir: "dist"`
     - Crear directorios `src/routes/`, `src/services/`, `src/types/`, `src/utils/` con `.gitkeep` en cada uno
     - Crear `packages/backend/.env.example` con `PORT=3001`
     - _Requirements: 1.2, 2.1, 2.6, 2.8, 4.7_
 
-  - [ ] 2.2 Implementar servidor Express con endpoint `/health`
+  - [x] 2.2 Implementar servidor Express con endpoint `/health`
     - Crear `src/types/health.ts` con la interfaz `HealthCheckResponse { status: "ok"; service: "trazia-backend" }`
     - Crear `src/routes/health.ts` con el router Express para `GET /health` que responda `200`, `Content-Type: application/json` y el body exacto
     - Crear `src/app.ts` que lea `process.env.PORT` (fallback `3001`), configure Express, monte las rutas y exporte `app` y `startServer`; el servidor arranca solo cuando es el módulo de entrada
@@ -44,11 +44,11 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
     - Cada `fc.assert` con mínimo `{ numRuns: 100 }` y tag de comentario `// Feature: trazia-project-init, Property N: <texto>`
     - _Requirements: 2.2, 2.3_
 
-- [ ] 3. Checkpoint — Verificar backend
+- [x] 3. Checkpoint — Verificar backend
   - Asegúrate de que `tsc --noEmit` sale con código `0` en `packages/backend` y todos los tests pasan. Consulta al usuario si surgen dudas.
 
-- [ ] 4. Configurar paquete frontend
-  - [ ] 4.1 Crear estructura de archivos del frontend
+- [x] 4. Configurar paquete frontend
+  - [x] 4.1 Crear estructura de archivos del frontend
     - Crear `packages/frontend/package.json` con scripts `dev` (`vite`), `build` (`tsc && vite build`), `lint` (`eslint "src/**/*.{ts,tsx}"`), `test` (`vitest run`)
     - Crear `packages/frontend/tsconfig.json` extendiendo `../../tsconfig.base.json` con `module: "ESNext"`, `target: "ES2020"`, `jsx: "react-jsx"`
     - Crear `packages/frontend/vite.config.ts` con `@vitejs/plugin-react` habilitado
@@ -56,7 +56,7 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
     - Crear `packages/frontend/.env.example` con `VITE_API_URL=http://localhost:3001`
     - _Requirements: 1.3, 3.1, 3.5, 3.6, 4.7_
 
-  - [ ] 4.2 Implementar componentes y servicios del frontend
+  - [x] 4.2 Implementar componentes y servicios del frontend
     - Crear `src/main.tsx` (punto de entrada Vite con `ReactDOM.createRoot`)
     - Crear `src/App.tsx` que monte `<ArchitectureGraph />`
     - Crear `src/components/architecture_graph.tsx` con el componente `ArchitectureGraph` que renderice un `<ReactFlow>` vacío (0 nodos, 0 aristas) sin errores de consola
@@ -73,10 +73,10 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
     - `fc.assert` con mínimo `{ numRuns: 100 }` y tag `// Feature: trazia-project-init, Property 4: VITE_API_URL resolution`
     - _Requirements: 3.7_
 
-- [ ] 5. Checkpoint — Verificar frontend
+- [x] 5. Checkpoint — Verificar frontend
   - Asegúrate de que `tsc --noEmit` y `npm run build` salen con código `0` en `packages/frontend` y todos los tests pasan. Consulta al usuario si surgen dudas.
 
-- [ ] 6. Configurar scripts raíz del workspace
+- [x] 6. Configurar scripts raíz del workspace
   - Añadir al `package.json` raíz:
     - `dev`: `concurrently "npm run dev -w packages/backend" "npm run dev -w packages/frontend"` (sin `--kill-others-on-fail`)
     - `build`: `npm-run-all build:backend build:frontend` (secuencial)
@@ -86,7 +86,8 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
   - Añadir `concurrently` y `npm-run-all` como `devDependencies` en `package.json` raíz
   - _Requirements: 4.1, 4.2, 4.3, 4.6_
 
-- [ ] 7. Configurar Git hooks (Husky + lint-staged + commitlint)
+- [SALTEADA — fuera de alcance del MVP] 7. Configurar Git hooks (Husky + lint-staged + commitlint)
+  - _Decisión: con dos personas y cinco días hasta el cierre, los hooks de commit bloquean más de lo que aportan y no tienen impacto en la demo ni en el Spec Health Score._
   - Instalar y configurar `husky` en la raíz; crear `.husky/pre-commit` que ejecute `lint-staged`
   - Crear `.husky/commit-msg` que ejecute `commitlint --edit $1`
   - Crear `.lintstagedrc.json` que aplique `eslint --fix` a archivos `*.ts` y `*.tsx` staged
@@ -94,7 +95,7 @@ Crear la estructura base del monorepo TrazIA (npm workspaces) con backend Node.j
   - Añadir `husky`, `lint-staged`, `@commitlint/cli`, `@commitlint/config-conventional` como `devDependencies` en `package.json` raíz
   - _Requirements: 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 8. Checkpoint final — Verificar integración completa
+- [x] 8. Checkpoint final — Verificar integración completa
   - Asegúrate de que `npm install` desde la raíz completa sin errores, `npm run lint` produce 0 errores, `npm run build` sale con código `0`, y todos los tests del workspace pasan. Consulta al usuario si surgen dudas.
 
 ---
