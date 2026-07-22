@@ -1,0 +1,69 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Build / compilación
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# Variables de entorno — se permiten los ejemplos, nunca los reales
+.env*
+!.env.example
+
+# Claves y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# AWS
+.aws-sam/
+.aws/
+samconfig.toml
+cdk.out/
+
+# Cobertura de tests
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime
+*.pid
+*.seed
+*.pid.lock
+
+# Cachés
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.tsbuildinfo
+*.tsbuildinfo
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# IDEs
+.idea/
+*.swp
+*.swo
+*~

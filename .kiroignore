@@ -1,0 +1,45 @@
+# Dependencias — miles de archivos que no aportan contexto
+node_modules/
+
+# Build / compilación — código generado, no fuente
+dist/
+build/
+out/
+.next/
+.nuxt/
+cdk.out/
+.aws-sam/
+
+# Cobertura de tests
+coverage/
+.nyc_output/
+
+# Lockfiles — ruido puro, los tipos y versiones están en package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+logs/
+*.log
+
+# Cachés
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# Secretos y claves — nunca deben leerse
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+.aws/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
