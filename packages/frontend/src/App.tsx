@@ -1,10 +1,86 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useAnalysis } from './hooks/use_analysis'
+import { RepoInput } from './components/repo_input'
+import { ProjectSummary } from './components/project_summary'
 import { ArchitectureGraph } from './components/architecture_graph'
+import { GraphLegend } from './components/graph_legend'
+import { ModulePanel } from './components/module_panel'
+import { ErrorBanner } from './components/error_banner'
+import type { ModuleNode } from './types'
 import './App.css'
 
-// Componente raíz de la aplicación TrazIA
+// Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
-  return <ArchitectureGraph />
+  const { status, result, error, generatingSpec, analyzeRepo, generateSpec, reset } = useAnalysis()
+  const [selectedModule, setSelectedModule] = useState<ModuleNode | null>(null)
+
+  const handleAnalyze = (repoUrl: string) => {
+    setSelectedModule(null)
+    analyzeRepo(repoUrl)
+  }
+
+  const handleGenerateSpec = async (moduleId: string) => {
+    const response = await generateSpec(moduleId)
+    if (response) {
+      // Actualiza el módulo seleccionado con la spec generada
+      const updated = result?.modules.find((m) => m.id === moduleId)
+      if (updated) setSelectedModule(updated)
+    }
+  }
+
+  const handleNodeClick = (module: ModuleNode) => {
+    setSelectedModule(module)
+  }
+
+  const handleClosePanel = () => {
+    setSelectedModule(null)
+  }
+
+  const showDashboard = status === 'success' && result
+
+  return (
+    <div className="app">
+      {/* Barra superior con input de URL (hero inicial o compacto) */}
+      <header className="app__header">
+        <RepoInput onAnalyze={handleAnalyze} status={status} onReset={reset} />
+      </header>
+
+      {/* Banner de error si falla el análisis */}
+      {error && (
+        <div className="app__error-container">
+          <ErrorBanner message={error} onDismiss={reset} />
+        </div>
+      )}
+
+      {/* Dashboard completo: summary + grafo + panel */}
+      {showDashboard && (
+        <main className="app__main">
+          {/* Columna izquierda: resumen del proyecto y leyenda */}
+          <aside className="app__sidebar">
+            <ProjectSummary result={result} />
+            <GraphLegend />
+          </aside>
+
+          {/* Columna central: grafo interactivo */}
+          <section className="app__graph-container">
+            <ArchitectureGraph
+              modules={result.modules}
+              onNodeClick={handleNodeClick}
+              selectedModuleId={selectedModule?.id}
+            />
+          </section>
+
+          {/* Panel lateral derecho: detalles del módulo seleccionado */}
+          <ModulePanel
+            module={selectedModule}
+            onClose={handleClosePanel}
+            onGenerateSpec={handleGenerateSpec}
+            isGenerating={generatingSpec === selectedModule?.id}
+          />
+        </main>
+      )}
+    </div>
+  )
 }
 
 export default App
