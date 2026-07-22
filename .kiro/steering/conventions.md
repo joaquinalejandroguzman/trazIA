@@ -9,21 +9,21 @@ inclusion: always
 - **Variables y funciones:** camelCase → `getSpecScore()`, `repoUrl`
 - **Clases e interfaces:** PascalCase → `AnalyzerAgent`, `ModuleNode`
 - **Constantes:** UPPER_SNAKE_CASE → `MAX_RETRIES`, `BEDROCK_REGION`
-- **Archivos TypeScript/JS:** camelCase → `analyzerAgent.ts`, `specHealthScore.ts`
+- **Archivos TypeScript/JS:** snake_case → `analyzer_agent.ts`, `spec_health_score.ts`
 - **Comentarios:** en español, siempre
 
 ## Estructura de agentes
 
-Cada agente vive en su propia carpeta bajo `src/agents/`:
+Cada agente vive en su propia carpeta bajo `packages/backend/src/agents/`:
 
 ```
-src/agents/<nombre-agente>/
+packages/backend/src/agents/<nombre-agente>/
   index.ts        → handler Lambda (punto de entrada)
   <nombre>.ts     → lógica principal del agente
   types.ts        → tipos locales del agente (si los hay)
 ```
 
-Los tipos y contratos compartidos entre agentes van en `src/shared/`.
+Los tipos y contratos compartidos entre agentes van en `packages/backend/src/shared/`.
 
 ## Contrato JSON entre agentes
 

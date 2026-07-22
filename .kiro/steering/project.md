@@ -57,20 +57,19 @@ El núcleo del producto no es el grafo: es la trazabilidad. El grafo es la inter
 ## Estructura del proyecto
 
 ```
-src/
+backend/
   agents/
     analyzer/      → Agente Analizador (mapeo de módulos y dependencias)
     ears-writer/   → Agente Redactor EARS (inferencia y redacción de specs)
     orchestrator/  → Agente Orquestador (Spec Health Score)
-  api/             → endpoints REST que exponen los agentes
-  shared/          → tipos TypeScript compartidos, contrato JSON entre agentes
+  shared/          → tipos TypeScript compartidos, contrato JSON entre 
 frontend/          → aplicación React con react-flow
 .kiro/
   specs/           → specs EARS del propio proyecto trazIA
   steering/        → este archivo y convenciones
 ```
 
-Cada agente vive en su propia carpeta bajo `src/agents/` y se despliega como una función Lambda independiente.
+Cada agente vive en su propia carpeta bajo `packages/backend/src/agents/` y se despliega como una función Lambda independiente.
 
 ## Uso de Kiro en el proyecto
 
