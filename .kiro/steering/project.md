@@ -10,21 +10,5 @@ TrazIA es un Visualizador de Arquitectura, que desarrollador ejecuta para que pu
 ## Stack tecnológico
 
 - Backend: Node.js/TypeScript
-- Frontend: JavaScript
-<!-- - Base de datos: PostgreSQL -->
+- Frontend: React + React Flow
 - IA/ML: AWZ Bedrock
-
-## Convenciones de código
-
-- Usar camelCase para variables en TypeScript y JavaScript
-- Comentarios en español
-- Commits en formato Conventional Commits
-
-## Estructura del proyecto
-
-<!-- Describe brevemente las carpetas principales. Por ejemplo:
-- src/api/       → endpoints REST
-- src/models/    → modelos de base de datos
-- src/services/  → lógica de negocio
-- frontend/      → aplicación React
--->
