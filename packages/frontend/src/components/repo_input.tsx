@@ -107,7 +107,7 @@ export const RepoInput: React.FC<RepoInputProps> = ({ onAnalyze, status, onReset
 
       {!hasResult && (
         <p className="repo-input__hint">
-          Solo repositorios públicos de GitHub · TypeScript / JavaScript
+          Solo repositorios públicos de GitHub
         </p>
       )}
     </div>
