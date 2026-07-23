@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { ModuleNode } from '../types'
 import { SpecHealthBar } from './spec_health_bar'
 
@@ -9,6 +9,31 @@ interface ModulePanelProps {
   isGenerating: boolean
 }
 
+// FALLBACK: eliminar cuando el backend siempre provea proseSummary en ModuleNode.
+// Este parser regex es frágil y no cubre todos los patrones EARS. Existe solo para
+// que el modo mock muestre algo legible. En producción, el Agente Redactor EARS
+// genera el resumen en prosa directamente.
+function generateProseSummary(specContent: string): string {
+  if (import.meta.env.DEV) {
+    console.warn('[TrazIA] Usando fallback local para proseSummary — el backend debería proveerlo')
+  }
+
+  // Extrae las líneas con keywords EARS y las convierte a prosa simple
+  const lines = specContent
+    .split('\n')
+    .filter((line) => /^\*\*(WHEN|THEN|IF|WHERE|THE)\*\*/.test(line.trim()))
+    .map((line) =>
+      line
+        .replace(/\*\*/g, '')
+        .replace(/^(WHEN|THEN|IF|WHERE|THE)\s+/, '')
+        .replace(/\s*SHALL\s*/, ' ')
+        .trim()
+    )
+
+  if (lines.length === 0) return 'Módulo con spec generada.'
+  return lines.slice(0, 3).join('. ') + '.'
+}
+
 // Panel lateral que muestra detalles de un módulo seleccionado
 export const ModulePanel: React.FC<ModulePanelProps> = ({
   module,
@@ -16,9 +41,14 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({
   onGenerateSpec,
   isGenerating,
 }) => {
+  const [showFullEars, setShowFullEars] = useState(false)
+
   if (!module) return null
 
   const canGenerateSpec = module.specStatus === 'untraced' && !isGenerating
+  // Usa el resumen en prosa del backend si está disponible; si no, lo genera localmente
+  const proseSummary = module.proseSummary
+    ?? (module.specContent ? generateProseSummary(module.specContent) : null)
 
   return (
     <aside
@@ -96,8 +126,25 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({
 
         {module.specContent && (
           <section className="module-panel__section">
-            <h3 className="module-panel__section-title">Spec (EARS)</h3>
-            <pre className="module-panel__spec-content">{module.specContent}</pre>
+            <h3 className="module-panel__section-title">Intención del módulo</h3>
+            {proseSummary && (
+              <p className="module-panel__prose-summary">{proseSummary}</p>
+            )}
+            {module.specStatus === 'drift' && (
+              <div className="module-panel__drift-warning">
+                ⚠️ Esta spec puede estar desactualizada respecto al código actual
+              </div>
+            )}
+            <button
+              className="module-panel__toggle-ears"
+              onClick={() => setShowFullEars(!showFullEars)}
+              aria-expanded={showFullEars}
+            >
+              {showFullEars ? '▾ Ocultar spec EARS' : '▸ Ver spec EARS completa'}
+            </button>
+            {showFullEars && (
+              <pre className="module-panel__spec-content">{module.specContent}</pre>
+            )}
           </section>
         )}
 

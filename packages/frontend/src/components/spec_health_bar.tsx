@@ -1,4 +1,5 @@
 import React from 'react'
+import { getHealthScoreColor } from '../constants/theme'
 
 interface SpecHealthBarProps {
   score: number   // 0–100
@@ -17,14 +18,7 @@ export const SpecHealthBar: React.FC<SpecHealthBarProps> = ({
   // Clampea el score entre 0 y 100
   const clampedScore = Math.max(0, Math.min(100, score))
 
-  // Color según el score: 0-39 rojo, 40-69 amarillo, 70-100 verde
-  const getScoreColor = (s: number): string => {
-    if (s < 40) return '#e74c3c'   // rojo
-    if (s < 70) return '#f39c12'   // amarillo
-    return '#2ecc71'               // verde
-  }
-
-  const barColor = getScoreColor(clampedScore)
+  const barColor = getHealthScoreColor(clampedScore)
   const displayLabel = label ?? `Spec Health Score: ${clampedScore}%`
 
   return (

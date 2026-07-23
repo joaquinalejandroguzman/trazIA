@@ -9,7 +9,10 @@ inclusion: always
 - **Variables y funciones:** camelCase → `getSpecScore()`, `repoUrl`
 - **Clases e interfaces:** PascalCase → `AnalyzerAgent`, `ModuleNode`
 - **Constantes:** UPPER_SNAKE_CASE → `MAX_RETRIES`, `BEDROCK_REGION`
-- **Archivos TypeScript/JS:** snake_case → `analyzer_agent.ts`, `spec_health_score.ts`
+- **Archivos TypeScript/JS:** snake_case para lógica de agentes y utilidades → `ears_writer.ts`, `spec_health_score.ts`
+  - Excepciones: archivos de rutas en frontend (componentes React) usan snake_case → `repo_input.tsx`, `architecture_graph.tsx`
+  - Excepciones: archivos de rutas de API usan snake_case → `generate_spec.ts`
+  - Archivos de punto de entrada y configuración pueden usar nombres descriptivos → `app.ts`, `index.ts`
 - **Comentarios:** en español, siempre
 
 ## Estructura de agentes

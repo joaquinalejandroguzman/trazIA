@@ -17,11 +17,15 @@ npm install
 ## Correr en desarrollo
 
 ```bash
-# Backend / API
+# Backend (desde packages/backend)
 npm run dev
 
-# Frontend
+# Frontend (desde packages/frontend)
+npm run dev
+
+# O desde el raíz del monorepo
 npm run dev --workspace=frontend
+npm run dev --workspace=backend
 ```
 
 ## Build

@@ -17,6 +17,7 @@ export interface ModuleNode {
   linesOfCode?: number
   lastModified?: string   // ISO date string
   specContent?: string    // contenido EARS generado o existente
+  proseSummary?: string   // resumen legible en prosa derivado de la spec EARS
 }
 
 // Respuesta del Agente Orquestador

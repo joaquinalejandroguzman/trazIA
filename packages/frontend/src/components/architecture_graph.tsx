@@ -10,7 +10,9 @@ import {
   type NodeMouseHandler,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import type { ModuleNode, SpecStatus } from '../types'
+import type { ModuleNode } from '../types'
+import { computeLayout, NODE_WIDTH, NODE_HEIGHT } from '../utils/graph_layout'
+import { SPEC_STATUS_COLORS } from '../constants/theme'
 
 interface ArchitectureGraphProps {
   modules: ModuleNode[]
@@ -18,34 +20,29 @@ interface ArchitectureGraphProps {
   selectedModuleId?: string | null
 }
 
-// Mapea el estado de trazabilidad al color del nodo
-const STATUS_COLORS: Record<SpecStatus, { bg: string; border: string; text: string }> = {
-  traced: { bg: '#d4edda', border: '#2ecc71', text: '#155724' },
-  drift: { bg: '#fff3cd', border: '#f39c12', text: '#856404' },
-  untraced: { bg: '#f8d7da', border: '#e74c3c', text: '#721c24' },
-}
-
-// Convierte los ModuleNode del dominio a nodos de ReactFlow
+// Convierte los ModuleNode del dominio a nodos de ReactFlow usando layout de dagre
 function buildNodes(modules: ModuleNode[], selectedId?: string | null): Node[] {
-  const COLUMNS = 4
-  const H_GAP = 220
-  const V_GAP = 100
-  const NODE_W = 180
-  const NODE_H = 60
+  // Calcula posiciones usando dagre (respeta topología de dependencias)
+  const positions = computeLayout(modules, {
+    direction: 'TB',
+    nodeSep: 60,
+    rankSep: 80,
+  })
 
-  return modules.map((mod, index) => {
-    const col = index % COLUMNS
-    const row = Math.floor(index / COLUMNS)
-    const colors = STATUS_COLORS[mod.specStatus]
+  const positionMap = new Map(positions.map((p) => [p.id, { x: p.x, y: p.y }]))
+
+  return modules.map((mod) => {
+    const colors = SPEC_STATUS_COLORS[mod.specStatus]
     const isSelected = mod.id === selectedId
+    const position = positionMap.get(mod.id) ?? { x: 0, y: 0 }
 
     return {
       id: mod.id,
-      position: { x: col * H_GAP, y: row * V_GAP },
+      position,
       data: {
         label: (
           <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: NODE_W - 20 }}>
+            <div style={{ fontWeight: 600, fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: NODE_WIDTH - 20 }}>
               {mod.name}
             </div>
             <div style={{ fontSize: '0.65rem', opacity: 0.75, marginTop: 2 }}>
@@ -58,8 +55,8 @@ function buildNodes(modules: ModuleNode[], selectedId?: string | null): Node[] {
         background: colors.bg,
         border: `2px solid ${isSelected ? '#333' : colors.border}`,
         borderRadius: 8,
-        width: NODE_W,
-        height: NODE_H,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
         color: colors.text,
         boxShadow: isSelected ? '0 0 0 3px rgba(0,0,0,0.25)' : undefined,
         cursor: 'pointer',
@@ -130,7 +127,7 @@ const GraphContent: React.FC<ArchitectureGraphProps> = ({
             // Recupera el módulo por id para obtener el color real
             const mod = moduleById.get(node.id)
             if (!mod) return '#ccc'
-            return STATUS_COLORS[mod.specStatus].border
+            return SPEC_STATUS_COLORS[mod.specStatus].border
           }}
           pannable
           zoomable

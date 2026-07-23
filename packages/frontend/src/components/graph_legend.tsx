@@ -1,23 +1,24 @@
 import React from 'react'
+import { SPEC_STATUS_DOT_COLORS } from '../constants/theme'
 
 // Leyenda visual del grafo: colores por estado de trazabilidad
 export const GraphLegend: React.FC = () => {
   const items = [
     {
-      status: 'traced',
-      color: '#2ecc71',
+      status: 'traced' as const,
+      color: SPEC_STATUS_DOT_COLORS.traced,
       label: 'Trazado',
       description: 'Tiene spec vigente',
     },
     {
-      status: 'drift',
-      color: '#f39c12',
+      status: 'drift' as const,
+      color: SPEC_STATUS_DOT_COLORS.drift,
       label: 'Drift',
       description: 'Spec desactualizada',
     },
     {
-      status: 'untraced',
-      color: '#e74c3c',
+      status: 'untraced' as const,
+      color: SPEC_STATUS_DOT_COLORS.untraced,
       label: 'Sin trazabilidad',
       description: 'Caja negra, sin spec',
     },
