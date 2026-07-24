@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAnalysis } from './hooks/use_analysis'
 import { RepoInput } from './components/repo_input'
 import { ProjectSummary } from './components/project_summary'
-import { ArchitectureGraph } from './components/architecture_graph'
+import { ArchitectureGraph, type ArchitectureGraphRef } from './components/architecture_graph'
 import { GraphLegend } from './components/graph_legend'
 import { ModulePanel } from './components/module_panel'
 import { ErrorBanner } from './components/error_banner'
@@ -14,6 +14,8 @@ const App: React.FC = () => {
   const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
   // Guardamos el nodo seleccionado completo para poder mostrarlo en el panel
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+  // Ref imperativa para controlar el centrado del grafo
+  const graphRef = useRef<ArchitectureGraphRef>(null)
 
   // Sincroniza el nodo seleccionado con los datos frescos de result.modules
   useEffect(() => {
@@ -44,6 +46,15 @@ const App: React.FC = () => {
     setSelectedNode(null)
   }
 
+  // Navega a una subcarpeta: actualiza la selección y centra el grafo
+  const handleFolderNavigate = (folderId: string) => {
+    const targetFolder = result?.folders.find(f => f.id === folderId)
+    if (targetFolder) {
+      setSelectedNode(targetFolder)
+    }
+    graphRef.current?.fitToNode(folderId)
+  }
+
   const showDashboard = status === 'success' && result
 
   return (
@@ -72,6 +83,7 @@ const App: React.FC = () => {
           {/* Columna central: grafo interactivo */}
           <section className="app__graph-container">
             <ArchitectureGraph
+              ref={graphRef}
               modules={result.modules}
               folders={result.folders}
               integrations={result.integrations}
@@ -88,6 +100,9 @@ const App: React.FC = () => {
             onGenerateSpec={handleGenerateSpec}
             generatingSpec={generatingSpec}
             specError={error}
+            allFolders={result.folders}
+            allModules={result.modules}
+            onFolderNavigate={handleFolderNavigate}
           />
         </main>
       )}

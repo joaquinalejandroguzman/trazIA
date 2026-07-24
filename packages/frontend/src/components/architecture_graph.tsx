@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback, useImperativeHandle } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
+  useReactFlow,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -13,6 +14,12 @@ import '@xyflow/react/dist/style.css'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode, GraphEdge } from '../types'
 import { ZONE_COLORS, INTEGRATION_COLORS, getFileIcon, detectZone, getTraceabilityColor, getEffectiveScore } from '../constants/theme'
 import { computeFolderDepth, getHierarchyFontSize } from '../utils/folder_hierarchy'
+import { FIT_VIEW_DURATION, FIT_VIEW_PADDING } from '../utils/folder_panel_helpers'
+
+// Interfaz imperativa para controlar el grafo desde fuera
+export interface ArchitectureGraphRef {
+  fitToNode: (nodeId: string) => void
+}
 
 // Custom node para carpetas con título jerárquico visible
 function FolderGroupNode({ data }: { data: Record<string, unknown> }) {
@@ -359,73 +366,87 @@ function buildEdges(edges: GraphEdge[]): Edge[] {
   }))
 }
 
-// Contenido interno del grafo
-const GraphContent: React.FC<ArchitectureGraphProps> = ({
-  modules,
-  folders,
-  integrations,
-  edges,
-  onNodeClick,
-  selectedNodeId,
-}) => {
-  const nodes = useMemo(
-    () => buildLayoutNodes(modules, folders, integrations, selectedNodeId),
-    [modules, folders, integrations, selectedNodeId]
-  )
-  const flowEdges = useMemo(() => buildEdges(edges), [edges])
+// Contenido interno del grafo (con forwardRef para exponer fitToNode)
+const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphProps>(
+  ({ modules, folders, integrations, edges, onNodeClick, selectedNodeId }, ref) => {
+    const { setCenter, getNodesBounds } = useReactFlow()
 
-  // Mapeo inverso para recuperar el nodo cuando se hace click
-  const nodeById = useMemo(() => {
-    const map = new Map<string, GraphNode>()
-    for (const m of modules) map.set(m.id, m)
-    for (const f of folders) map.set(f.id, f)
-    for (const i of integrations) map.set(i.id, i)
-    return map
-  }, [modules, folders, integrations])
+    const fitToNode = useCallback((nodeId: string) => {
+      // Obtener las coordenadas absolutas del nodo mediante getNodesBounds
+      const bounds = getNodesBounds([nodeId])
+      if (!bounds || bounds.width === 0) return
 
-  const handleNodeClick: NodeMouseHandler = (_event, node) => {
-    const graphNode = nodeById.get(node.id)
-    if (graphNode) onNodeClick(graphNode)
+      // Centrar en el título de la carpeta: mitad del ancho, mitad del alto del header
+      const centerX = bounds.x + bounds.width / 2
+      const centerY = bounds.y + FOLDER_PADDING_Y / 2
+
+      // Zoom máximo configurado en el grafo (2.5) para acercar al título
+      setCenter(centerX, centerY, { zoom: 2.5, duration: FIT_VIEW_DURATION })
+    }, [setCenter, getNodesBounds])
+
+    useImperativeHandle(ref, () => ({ fitToNode }), [fitToNode])
+
+    const nodes = useMemo(
+      () => buildLayoutNodes(modules, folders, integrations, selectedNodeId),
+      [modules, folders, integrations, selectedNodeId]
+    )
+    const flowEdges = useMemo(() => buildEdges(edges), [edges])
+
+    // Mapeo inverso para recuperar el nodo cuando se hace click
+    const nodeById = useMemo(() => {
+      const map = new Map<string, GraphNode>()
+      for (const m of modules) map.set(m.id, m)
+      for (const f of folders) map.set(f.id, f)
+      for (const i of integrations) map.set(i.id, i)
+      return map
+    }, [modules, folders, integrations])
+
+    const handleNodeClick: NodeMouseHandler = (_event, node) => {
+      const graphNode = nodeById.get(node.id)
+      if (graphNode) onNodeClick(graphNode)
+    }
+
+    return (
+      <div style={{ width: '100%', height: '100%' }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={flowEdges}
+          nodeTypes={nodeTypes}
+          onNodeClick={handleNodeClick}
+          fitView
+          fitViewOptions={{ padding: FIT_VIEW_PADDING }}
+          minZoom={0.2}
+          maxZoom={2.5}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={20} color="#e8e8e8" />
+          <Controls />
+          <MiniMap
+            nodeColor={(node) => {
+              const graphNode = nodeById.get(node.id)
+              if (!graphNode) return '#ccc'
+              if (graphNode.type === 'folder' || graphNode.type === 'module') {
+                const zone = detectZone(graphNode.path)
+                return ZONE_COLORS[zone].border
+              }
+              return INTEGRATION_COLORS[graphNode.type].border
+            }}
+            pannable
+            zoomable
+          />
+        </ReactFlow>
+      </div>
+    )
   }
+)
 
-  return (
-    <div style={{ width: '100%', height: '100%' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={flowEdges}
-        nodeTypes={nodeTypes}
-        onNodeClick={handleNodeClick}
-        fitView
-        fitViewOptions={{ padding: 0.15 }}
-        minZoom={0.2}
-        maxZoom={2.5}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background gap={20} color="#e8e8e8" />
-        <Controls />
-        <MiniMap
-          nodeColor={(node) => {
-            const graphNode = nodeById.get(node.id)
-            if (!graphNode) return '#ccc'
-            if (graphNode.type === 'folder' || graphNode.type === 'module') {
-              const zone = detectZone(graphNode.path)
-              return ZONE_COLORS[zone].border
-            }
-            return INTEGRATION_COLORS[graphNode.type].border
-          }}
-          pannable
-          zoomable
-        />
-      </ReactFlow>
-    </div>
-  )
-}
-
-// Componente exportado que envuelve el grafo en su Provider
-export const ArchitectureGraph: React.FC<ArchitectureGraphProps> = (props) => {
-  return (
-    <ReactFlowProvider>
-      <GraphContent {...props} />
-    </ReactFlowProvider>
-  )
-}
+// Componente exportado que envuelve el grafo en su Provider (con forwardRef)
+export const ArchitectureGraph = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphProps>(
+  (props, ref) => {
+    return (
+      <ReactFlowProvider>
+        <GraphContent ref={ref} {...props} />
+      </ReactFlowProvider>
+    )
+  }
+)

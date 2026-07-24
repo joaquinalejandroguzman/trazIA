@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode } from '../types'
 import { getTraceabilityColor, getEffectiveScore } from '../constants/theme'
+import { countDirectChildren, formatChildLabel, getSortedSubfolders, truncateFolderName } from '../utils/folder_panel_helpers'
 
 interface ModulePanelProps {
   node: GraphNode | null
@@ -8,10 +9,14 @@ interface ModulePanelProps {
   onGenerateSpec: (moduleId: string) => Promise<void>
   generatingSpec: string | null
   specError: string | null
+  // Nuevas props para folder-panel-content
+  allFolders?: FolderNode[]
+  allModules?: ModuleNode[]
+  onFolderNavigate?: (folderId: string) => void
 }
 
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
-export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError }) => {
+export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError, allFolders, allModules, onFolderNavigate }) => {
   if (!node) return null
 
   const isModule = node.type === 'module'
@@ -222,10 +227,42 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
 
             <section className="module-panel__section">
               <h3 className="module-panel__section-title">Contenido</h3>
-              <p className="module-panel__text">
-                {(node as FolderNode).childCount} elementos directos
-              </p>
+              {(() => {
+                const counts = countDirectChildren(node.id, allFolders ?? [], allModules ?? [])
+                return (
+                  <>
+                    <p className="module-panel__text">
+                      {formatChildLabel(counts.folders, 'folder')}
+                    </p>
+                    <p className="module-panel__text">
+                      {formatChildLabel(counts.files, 'file')}
+                    </p>
+                  </>
+                )
+              })()}
             </section>
+
+            {(() => {
+              const sortedSubfolders = getSortedSubfolders(node.id, allFolders ?? [])
+              if (sortedSubfolders.length === 0) return null
+              return (
+                <section className="module-panel__section">
+                  <h3 className="module-panel__section-title">Subcarpetas</h3>
+                  <div className="module-panel__folder-buttons">
+                    {sortedSubfolders.map((sub) => (
+                      <button
+                        key={sub.id}
+                        className="module-panel__folder-btn"
+                        onClick={() => onFolderNavigate?.(sub.id)}
+                        title={sub.name}
+                      >
+                        📁 {truncateFolderName(sub.name)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )
+            })()}
           </>
         )}
 
