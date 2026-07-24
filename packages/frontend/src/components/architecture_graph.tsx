@@ -264,7 +264,7 @@ function buildLayoutNodes(
       position,
       data: {
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', position: 'relative', justifyContent: 'space-between', width: '100%'}}>
             <span style={{ fontSize: '0.75rem', flexShrink: 0 }}>{icon}</span>
             <span style={{
               fontSize: '0.68rem',
@@ -337,8 +337,6 @@ function buildLayoutNodes(
           </div>
         ),
       },
-      width: INTEGRATION_NODE_WIDTH,
-      height: INTEGRATION_NODE_HEIGHT,
       style: {
         width: INTEGRATION_NODE_WIDTH,
         height: INTEGRATION_NODE_HEIGHT,
