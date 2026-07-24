@@ -3,6 +3,7 @@
 // Ante fallo total (tras reintentos), retorna un Markdown de error sin lanzar excepción.
 
 import { bedrockClient, BEDROCK_MODEL_EARS } from '../../clients/bedrock_client'
+import { limitedMap } from '../../shared/concurrency_limiter'
 import { withLlmRetry } from '../../shared/llm_retry'
 import { ModuleNode } from '../../shared/types'
 
@@ -71,9 +72,10 @@ export async function generateEarsSpec(
 }
 
 /**
- * Genera specs EARS para una lista de módulos en paralelo.
+ * Genera specs EARS para una lista de módulos con concurrencia limitada.
  * Módulos sin sourceContent reciben earsSpec vacío.
  * Módulos con sourceContent reciben earsSpec desde generateEarsSpec.
+ * Ante fallo de un módulo, continúa con los demás (earsSpec vacío como fallback).
  *
  * @param modules - lista de módulos del pipeline (con sourceContent ya cargado)
  * @returns nueva lista de módulos con el campo earsSpec asignado
@@ -81,9 +83,10 @@ export async function generateEarsSpec(
 export async function generateEarsSpecs(
   modules: ModuleNode[]
 ): Promise<ModuleNode[]> {
-  // Procesar todos los módulos en paralelo
-  const results = await Promise.all(
-    modules.map(async (module) => {
+  // Procesar módulos con concurrencia limitada para evitar throttling en Bedrock
+  const results = await limitedMap(
+    modules,
+    async (module) => {
       // Módulos sin sourceContent reciben spec vacía
       if (!module.sourceContent) {
         return { ...module, earsSpec: '' }
@@ -92,8 +95,11 @@ export async function generateEarsSpecs(
       // Módulos con sourceContent reciben spec generada por Sonnet
       const earsSpec = await generateEarsSpec(module.name, module.sourceContent)
       return { ...module, earsSpec }
-    })
+    },
+    // Ante error en un módulo, continuar con los demás — spec vacía como fallback
+    (module) => ({ ...module, earsSpec: '' })
   )
 
-  return results
+  // Con onError definido, nunca hay undefined en results — cast seguro
+  return results as ModuleNode[]
 }

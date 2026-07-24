@@ -3,8 +3,8 @@ import axios, { AxiosInstance, AxiosError, type InternalAxiosRequestConfig } fro
 // Lee la URL base del entorno; usa localhost:3001 como fallback
 const BASE_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
-// Timeout generoso porque los agentes Lambda pueden tardar en cold start
-const REQUEST_TIMEOUT_MS = 60_000
+// Timeout ampliado: 3 minutos para repos medianos
+const REQUEST_TIMEOUT_MS = 180_000
 
 // Cantidad máxima de reintentos para errores transitorios (5xx, timeout, red)
 const MAX_RETRIES = 1
@@ -19,10 +19,8 @@ const apiClient: AxiosInstance = axios.create({
   },
 })
 
-// Determina si un error es transitorios y amerita retry
+// Determina si un error es transitorio y amerita retry (excluye ECONNABORTED, que se maneja aparte)
 function isRetryableError(error: AxiosError): boolean {
-  // Timeout de red
-  if (error.code === 'ECONNABORTED') return true
   // Error de red sin respuesta (servidor caído, sin conexión)
   if (!error.response) return true
   // Errores del servidor (5xx) son transitorios
@@ -73,6 +71,13 @@ apiClient.interceptors.response.use(
 
   // Manejo de errores
   async (error: AxiosError) => {
+    // Timeout: rechazar inmediatamente sin reintentar
+    if (error.code === 'ECONNABORTED') {
+      return Promise.reject(
+        new Error('La operación tardó demasiado. Intentá con un repositorio más chico o volvé a intentar.')
+      )
+    }
+
     const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number }
 
     // Retry para errores transitorios (solo si no superamos el límite)

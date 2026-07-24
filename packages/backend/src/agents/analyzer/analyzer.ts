@@ -4,6 +4,7 @@ import type { ModuleNode, SpecStatus } from '../../shared/types'
 import { scanAllFiles, canParseImports, getFileLanguage } from '../../shared/file_scanner'
 import { bedrockClient, BEDROCK_MODEL_ANALYZER } from '../../clients/bedrock_client'
 import { withLlmRetry } from '../../shared/llm_retry'
+import { limitedMap } from '../../shared/concurrency_limiter'
 
 // Nota: el Analizador mapea TODOS los archivos relevantes del proyecto como nodos.
 // Extrae aristas de dependencia (imports) en todos los lenguajes soportados.
@@ -442,9 +443,78 @@ function generateReadableName(relativePath: string): string {
 // Clasificación con Haiku (specStatus + specHealthScore)
 // ============================================================
 
-interface HaikuClassification {
+export interface HaikuClassification {
   specStatus: SpecStatus
   specHealthScore: number
+}
+
+/**
+ * Extrae y valida el objeto de clasificación desde el texto crudo de respuesta de Haiku.
+ * Aplica los pasos en orden: FENCE → BRACE → PARSE → VALIDATE → clamp.
+ * Exportada para facilitar el testeo unitario aislado.
+ *
+ * @param raw - texto crudo de la respuesta de Haiku (puede incluir fences, prosa, etc.)
+ * @returns objeto HaikuClassification validado y clampeado
+ */
+export function parseHaikuClassification(raw: string): HaikuClassification {
+  const defaults: HaikuClassification = { specStatus: 'untraced', specHealthScore: 0 }
+
+  // Paso 1 — FENCE: extraer contenido interior del primer fence Markdown si existe
+  const fenceRegex = /```(?:json)?\s*\n?([\s\S]*?)```/
+  const fenceMatch = fenceRegex.exec(raw)
+  const candidate = fenceMatch ? fenceMatch[1] : raw
+
+  // Paso 2 — BRACE: localizar primer '{' y su '}' de cierre balanceado
+  const startIndex = candidate.indexOf('{')
+  if (startIndex === -1) {
+    return defaults
+  }
+
+  let depth = 0
+  let endIndex = -1
+  for (let i = startIndex; i < candidate.length; i++) {
+    if (candidate[i] === '{') {
+      depth++
+    } else if (candidate[i] === '}') {
+      depth--
+      if (depth === 0) {
+        endIndex = i
+        break
+      }
+    }
+  }
+
+  if (endIndex === -1) {
+    return defaults
+  }
+
+  const jsonStr = candidate.slice(startIndex, endIndex + 1)
+
+  // Paso 3 — PARSE: intentar parsear como JSON
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(jsonStr) as Record<string, unknown>
+  } catch {
+    return defaults
+  }
+
+  // Paso 4 — VALIDATE: verificar tipos requeridos
+  const { specStatus, specHealthScore } = parsed
+
+  if (typeof specStatus !== 'string' || typeof specHealthScore !== 'number') {
+    return defaults
+  }
+
+  // Validar que specStatus sea un valor permitido; sino sustituir 'untraced'
+  const validStatuses: SpecStatus[] = ['traced', 'drift', 'untraced']
+  const resolvedStatus: SpecStatus = validStatuses.includes(specStatus as SpecStatus)
+    ? (specStatus as SpecStatus)
+    : 'untraced'
+
+  // Paso 5 — Clamp: acotar specHealthScore al rango [0, 100] sin redondeo
+  const resolvedScore = Math.max(0, Math.min(100, specHealthScore))
+
+  return { specStatus: resolvedStatus, specHealthScore: resolvedScore }
 }
 
 /**
@@ -481,27 +551,8 @@ ${sourceContent}`
 
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
 
-    try {
-      const parsed = JSON.parse(text) as { specStatus?: unknown; specHealthScore?: unknown }
-      const status = parsed.specStatus
-      const score = parsed.specHealthScore
-
-      const validStatuses: SpecStatus[] = ['traced', 'drift', 'untraced']
-      const resolvedStatus: SpecStatus =
-        typeof status === 'string' && validStatuses.includes(status as SpecStatus)
-          ? (status as SpecStatus)
-          : 'untraced'
-
-      const rawScore = typeof score === 'number' ? score : Number(score)
-      const resolvedScore = isNaN(rawScore)
-        ? 0
-        : Math.max(0, Math.min(100, Math.round(rawScore)))
-
-      return { specStatus: resolvedStatus, specHealthScore: resolvedScore }
-    } catch {
-      // Parse fallido — retornar defaults
-      return defaults
-    }
+    // Parseo robusto: soporta fences Markdown, prosa circundante, clamp y defaults
+    return parseHaikuClassification(text)
   } catch (error) {
     // Fallo permanente tras reintentos
     console.error(JSON.stringify({ agente: 'analyzer', módulo: module.id, error: String(error) }))
@@ -585,12 +636,12 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
     }
   })
 
-  // Clasificar todos los módulos en paralelo con Haiku
-  const classifications = await Promise.all(
-    modules.map((module) =>
-      classifyModuleWithHaiku(module, module.sourceContent || '')
-    )
-  )
+  // Clasificar todos los módulos con concurrencia limitada vía Haiku
+  const classifications = await limitedMap(
+    modules,
+    (module) => classifyModuleWithHaiku(module, module.sourceContent || ''),
+    () => ({ specStatus: 'untraced' as const, specHealthScore: 0 })
+  ) as HaikuClassification[]
 
   // Aplicar clasificaciones a los módulos
   modules.forEach((module, index) => {

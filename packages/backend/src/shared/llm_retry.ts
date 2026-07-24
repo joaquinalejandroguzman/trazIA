@@ -25,17 +25,56 @@ const BASE_RETRY_DELAY_MS = parseInt(process.env.BASE_RETRY_DELAY_MS || '1000', 
 const MAX_RETRY_DELAY_MS = parseInt(process.env.MAX_RETRY_DELAY_MS || '30000', 10)
 
 /**
- * Determina si un error es transitorio y debe reintentar
- * Errores transitorios típicos: ThrottlingException, rate limits (429), mensajes con "Try your request again"
+ * Códigos HTTP que indican error transitorio del servidor
+ */
+const TRANSIENT_HTTP_STATUSES = new Set([429, 500, 502, 503, 504, 529])
+
+/**
+ * Códigos de error de red que indican fallo transitorio de conexión
+ */
+const TRANSIENT_NETWORK_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EPIPE'
+])
+
+/**
+ * Subcadenas en el mensaje que indican fallo transitorio de red
+ */
+const TRANSIENT_MESSAGE_SUBSTRINGS = ['socket hang up', 'connect ETIMEDOUT']
+
+/**
+ * Determina si un error es transitorio y debe reintentar.
+ * Cubre: ThrottlingException, rate limits (429), errores HTTP 5xx,
+ * códigos de red (ECONNRESET, etc.) y mensajes de red conocidos.
  */
 export function isTransientError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
-  
-  return (
-    error.message.includes('Try your request again') ||
-    error.constructor.name === 'ThrottlingException' ||
-    ('status' in error && (error as { status: number }).status === 429)
-  )
+
+  // Mensaje SDK: contiene indicación explícita de reintento
+  if (error.message.includes('Try your request again')) return true
+
+  // Mensajes de red conocidos
+  if (TRANSIENT_MESSAGE_SUBSTRINGS.some(sub => error.message.includes(sub))) return true
+
+  // SDK ThrottlingException (por nombre de constructor)
+  if (error.constructor.name === 'ThrottlingException') return true
+
+  // HTTP status transitorio (429, 500, 502, 503, 504, 529)
+  if ('status' in error) {
+    const status = (error as { status: number }).status
+    if (TRANSIENT_HTTP_STATUSES.has(status)) return true
+  }
+
+  // Código de error de red (ECONNRESET, ECONNREFUSED, ETIMEDOUT, ENOTFOUND, EPIPE)
+  if ('code' in error) {
+    const code = (error as { code: string }).code
+    if (TRANSIENT_NETWORK_CODES.has(code)) return true
+  }
+
+  return false
 }
 
 /**
