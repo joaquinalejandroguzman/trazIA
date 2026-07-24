@@ -191,6 +191,8 @@ function buildLayoutNodes(
         padding: 0,
       },
       type: 'group',
+      draggable: false,
+      selectable: true,
       ...(folder.parentFolder ? { parentId: folder.parentFolder, extent: 'parent' as const } : {}),
     })
   }
@@ -222,17 +224,16 @@ function buildLayoutNodes(
     // Nombre corto: solo el nombre del archivo
     const shortName = mod.path.split('/').pop() ?? mod.name
 
-    // Indicador de trazabilidad: solo cuando specStatus o specHealthScore están definidos
-    const hasTraceability = mod.specStatus !== undefined || mod.specHealthScore !== undefined
-    const effectiveScore = hasTraceability ? getEffectiveScore(mod.specStatus, mod.specHealthScore) : 0
-    const traceabilityColor = hasTraceability ? getTraceabilityColor(effectiveScore) : null
+    // Indicador de trazabilidad: siempre visible — sin datos = score 0 (rojo)
+    const effectiveScore = getEffectiveScore(mod.specStatus, mod.specHealthScore)
+    const traceabilityColor = getTraceabilityColor(effectiveScore)
 
     nodes.push({
       id: mod.id,
       position,
       data: {
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', position: 'relative' }}>
             <span style={{ fontSize: '0.75rem', flexShrink: 0 }}>{icon}</span>
             <span style={{
               fontSize: '0.68rem',
@@ -244,21 +245,18 @@ function buildLayoutNodes(
             }}>
               {shortName}
             </span>
-            {/* Indicador circular de trazabilidad */}
-            {traceabilityColor && (
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  backgroundColor: traceabilityColor,
-                  flexShrink: 0,
-                  marginLeft: 'auto',
-                  transition: 'background-color 300ms',
-                }}
-                aria-label={`Trazabilidad: ${effectiveScore}%`}
-              />
-            )}
+            {/* Indicador circular de trazabilidad — siempre visible */}
+            <span
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                backgroundColor: traceabilityColor,
+                border: '1.5px solid #000000ff',
+                transition: 'background-color 300ms',
+              }}
+              aria-label={`Trazabilidad: ${effectiveScore}%`}
+            />
           </div>
         ),
       },
@@ -273,7 +271,9 @@ function buildLayoutNodes(
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
+        overflow: 'visible',
       },
+      draggable: false,
       ...(mod.parentFolder ? { parentId: mod.parentFolder, extent: 'parent' as const } : {}),
     })
   }
@@ -314,6 +314,7 @@ function buildLayoutNodes(
         boxShadow: isSelected ? '0 0 0 2px rgba(0,0,0,0.2)' : undefined,
         cursor: 'pointer',
       },
+      draggable: false,
     })
   })
 
