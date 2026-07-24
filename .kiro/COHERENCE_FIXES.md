@@ -2,6 +2,8 @@
 
 Fecha: 2026-07-23
 
+> ⚠️ **Nota (2026-07-23):** Este documento fue escrito cuando el proyecto usaba el modelo "Spec Health Score + Redactor EARS". Desde entonces, `project.md` evolucionó a un **escáner de arquitectura** con detección de integraciones externas (BD, APIs). Los fixes documentados abajo ya no reflejan el estado actual — se mantienen como registro histórico. La estructura de agentes ahora es: Analizador, Agente de Integraciones, Orquestador.
+
 ## Resumen
 
 Se detectaron inconsistencias entre la descripción de `project.md` y la estructura real del código. Este documento lista todos los cambios aplicados para alinear el proyecto con su documentación.

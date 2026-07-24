@@ -6,41 +6,32 @@ import { ArchitectureGraph } from './components/architecture_graph'
 import { GraphLegend } from './components/graph_legend'
 import { ModulePanel } from './components/module_panel'
 import { ErrorBanner } from './components/error_banner'
-import type { ModuleNode } from './types'
+import type { GraphNode } from './types'
 import './App.css'
 
 // Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
-  const { status, result, error, generatingSpec, analyzeRepo, generateSpec, reset } = useAnalysis()
-  const [selectedModule, setSelectedModule] = useState<ModuleNode | null>(null)
+  const { status, result, error, analyzeRepo, reset } = useAnalysis()
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
 
   const handleAnalyze = (repoUrl: string) => {
-    setSelectedModule(null)
+    setSelectedNode(null)
     analyzeRepo(repoUrl)
   }
 
-  const handleGenerateSpec = async (moduleId: string) => {
-    const response = await generateSpec(moduleId)
-    if (response) {
-      // Actualiza el módulo seleccionado con la spec generada
-      const updated = result?.modules.find((m) => m.id === moduleId)
-      if (updated) setSelectedModule(updated)
-    }
-  }
-
-  const handleNodeClick = (module: ModuleNode) => {
-    setSelectedModule(module)
+  const handleNodeClick = (node: GraphNode) => {
+    setSelectedNode(node)
   }
 
   const handleClosePanel = () => {
-    setSelectedModule(null)
+    setSelectedNode(null)
   }
 
   const showDashboard = status === 'success' && result
 
   return (
     <div className="app">
-      {/* Barra superior con input de URL (hero inicial o compacto) */}
+      {/* Barra superior con input de URL */}
       <header className="app__header">
         <RepoInput onAnalyze={handleAnalyze} status={status} onReset={reset} />
       </header>
@@ -65,17 +56,18 @@ const App: React.FC = () => {
           <section className="app__graph-container">
             <ArchitectureGraph
               modules={result.modules}
+              folders={result.folders}
+              integrations={result.integrations}
+              edges={result.edges}
               onNodeClick={handleNodeClick}
-              selectedModuleId={selectedModule?.id}
+              selectedNodeId={selectedNode?.id}
             />
           </section>
 
-          {/* Panel lateral derecho: detalles del módulo seleccionado */}
+          {/* Panel lateral derecho: detalles del nodo seleccionado */}
           <ModulePanel
-            module={selectedModule}
+            node={selectedNode}
             onClose={handleClosePanel}
-            onGenerateSpec={handleGenerateSpec}
-            isGenerating={generatingSpec === selectedModule?.id}
           />
         </main>
       )}

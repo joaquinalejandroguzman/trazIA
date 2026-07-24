@@ -48,7 +48,7 @@ npm run test
 
 <!-- Sin valores — solo nombres y propósito -->
 
-- `AWS_REGION` → región donde corre Bedrock y Lambda
-- `BEDROCK_MODEL_ANALYZER` → ID del modelo Claude para el Agente Analizador (ej: Haiku)
-- `BEDROCK_MODEL_EARS_WRITER` → ID del modelo Claude para el Agente Redactor EARS (ej: Sonnet)
-- `DYNAMODB_TABLE_SCORES` → nombre de la tabla DynamoDB para el histórico de Spec Health Score
+- `AWS_REGION` → región donde corre Bedrock y Lambda (ej: sa-east-1)
+- `BEDROCK_MODEL_ANALYZER` → ID del modelo Claude para el Agente Analizador (ej: anthropic.claude-haiku-4-5)
+- `BEDROCK_MODEL_INTEGRATIONS` → ID del modelo Claude para el Agente de Integraciones (ej: anthropic.claude-sonnet-4-6)
+- `DYNAMODB_TABLE_SCANS` → nombre de la tabla DynamoDB para caché de escaneos ya realizados

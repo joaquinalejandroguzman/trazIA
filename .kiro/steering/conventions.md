@@ -33,13 +33,22 @@ Los tipos y contratos compartidos entre agentes van en `packages/backend/src/sha
 Los agentes se comunican con un contrato JSON estricto. Todo tipo compartido vive en `src/shared/types.ts`. Ejemplo de estructura base:
 
 ```typescript
-// Nodo del grafo que todos los agentes conocen
+// Nodo de módulo del grafo que todos los agentes conocen
 interface ModuleNode {
   id: string;           // ruta relativa del módulo
   name: string;
-  specStatus: 'traced' | 'drift' | 'untraced';
-  specHealthScore: number; // 0–100
+  type: 'module';
   dependencies: string[]; // ids de otros ModuleNode
+  path: string;
+}
+
+// Nodo de integración externa (BD o API)
+interface IntegrationNode {
+  id: string;
+  name: string;
+  type: 'database' | 'external_api';
+  detectedIn: string[];   // ids de ModuleNode donde se detectó
+  description: string;
 }
 ```
 
@@ -47,7 +56,7 @@ Cualquier cambio al contrato requiere actualizar `src/shared/types.ts` y los age
 
 ## Patrones preferidos
 
-- **Un agente, una responsabilidad** — el Analizador no infiere specs, el Redactor EARS no calcula scores
+- **Un agente, una responsabilidad** — el Analizador no detecta integraciones, el Agente de Integraciones no mapea dependencias internas
 - **Sin estado entre invocaciones Lambda** — cada llamada es stateless; el estado persiste en DynamoDB
 - **Tipos explícitos en TypeScript** — no usar `any`; si el tipo es desconocido, usar `unknown` y narrowing
 - **Errores con contexto** — loggear siempre con `{ agente, módulo, error }` para facilitar debugging en CloudWatch

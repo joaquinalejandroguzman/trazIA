@@ -6,54 +6,48 @@ inclusion: always
 
 ## ¿Qué es este proyecto?
 
-TrazIA es una herramienta de trazabilidad de intención para repositorios de código. El desarrollador pega la URL de un repo y en segundos obtiene un grafo interactivo de su arquitectura coloreado según **qué módulos tienen spec real y cuáles son caja negra** — con un click, un agente genera la spec faltante en sintaxis EARS, lista para guardarse en `.kiro/specs/`.
+TrazIA es un **escáner de arquitectura** para repositorios de código. El desarrollador pasa un repositorio (por drag-folder, conectando GitHub, o clonando por URL) y en segundos obtiene un **grafo interactivo** de cómo está organizado el proyecto: carpetas, archivos, integraciones entre módulos, conexiones a bases de datos e integraciones con APIs externas.
 
-TrazIA infiere la intención **sin asumir el origen del código**. Funciona igual en código generado con IA sin spec previa que en código escrito a mano hace años sin documentar. En ambos casos el síntoma es el mismo: nadie sabe qué partes del repo se entienden y cuáles son deuda invisible.
+El objetivo es que un desarrollador que abre el proyecto **por primera vez** pueda entenderlo en pocos minutos, sin tener que abrir decenas de archivos uno por uno para reconstruir mentalmente cómo se conecta todo. TrazIA hace ese trabajo de reconocimiento por él: lee el código, detecta la estructura real y la dibuja.
 
-Importante: cuando el repo no tiene spec previa, TrazIA no "recupera" un documento perdido — **genera una spec nueva, inferida hoy**, que adopta la convención Kiro (EARS + `.kiro/specs/`) sobre un código que nunca la tuvo. Es documentación retroactiva, no arqueología. Por eso toda spec generada por el Redactor EARS se trata como **propuesta a confirmar**, no como verdad verificada, hasta que un humano la revisa (ver stretch goal "Edición de spec antes de guardar").
-
-El núcleo del producto no es el grafo: es la trazabilidad. El grafo es la interfaz para navegar un concepto más profundo: ¿qué partes de este código alguien realmente *entendió* y documentó su intención, y cuáles existen sin dejar rastro de por qué?
-
-En la práctica, TrazIA funciona como un **Visualizador de Arquitectura**: el objetivo es que un desarrollador pueda entender un proyecto complejo en pocos minutos, sin tener que abrir decenas de archivos uno por uno. La aplicación "lee" el código y construye un mapa interactivo de cómo está organizado el proyecto y cómo se relacionan sus componentes — y ese mismo mapa es el que se colorea según el estado de trazabilidad de cada módulo.
+El núcleo del producto no es solo el árbol de carpetas — eso ya lo muestra cualquier IDE. El valor está en que el grafo también expone las conexiones que normalmente están escondidas en el código: qué módulo habla con qué base de datos, qué endpoints externos consume cada parte del sistema, y cómo se relacionan los componentes entre sí.
 
 ### Funcionalidades centrales (MVP)
 
-0. **Carga del proyecto** — el usuario puede iniciar el análisis de tres formas:
+0. **Carga del proyecto** — el usuario puede iniciar el escaneo de tres formas:
    - Arrastrar una carpeta (drag-folder)
    - Conectar un repositorio de GitHub
    - Clonar un repositorio mediante una URL
 
-   En todos los casos, la aplicación analiza la estructura del proyecto **sin necesidad de ejecutarlo** (análisis estático). Ver "Alcance estricto del MVP" para qué modos de carga están comprometidos en los 5 días vs. cuáles quedan como stretch goal.
+   En todos los casos, la aplicación analiza la estructura del proyecto **sin necesidad de ejecutarlo** (análisis estático).
 
 1. **Pipeline de agentes** que corren como funciones Lambda invocando Claude vía AWS Bedrock:
-   - **Agente Analizador** — mapea módulos, dependencias y estructura real del código (análisis estático, sin ejecutar el proyecto)
-   - **Agente Redactor EARS** — infiere qué requisito cumple cada módulo (leyendo código, nombres, comentarios y mensajes de commit) y redacta un `requirements.md` retroactivo en sintaxis EARS; no asume origen IA ni código reciente — funciona igual con cualquier codebase.
-     - **EARS es la fuente canónica**, no solo un formato de salida: al ser estructurada (`WHEN <trigger> the <system> SHALL <response>`), es lo que permite comparación mecánica contra el código para drift-checking y Spec Health Score.
-     - Para el desarrollador que nunca usó Kiro, el grafo no muestra EARS crudo: muestra un **resumen legible en prosa, derivado automáticamente de la spec EARS**, como capa de presentación. El EARS completo queda disponible al expandir el nodo o al guardar en `.kiro/specs/`. Así no se pierde la estructura que sostiene el resto del roadmap, pero tampoco se le exige al usuario aprender la sintaxis para entender qué hace su código.
-   - **Agente Orquestador** — calcula el **Spec Health Score** por módulo y a nivel proyecto
+   - **Agente Analizador** — mapea carpetas, archivos, módulos y dependencias internas (imports) a partir de análisis estático, sin ejecutar el proyecto
+   - **Agente de Integraciones** — recorre el código buscando puntos de conexión externos: clientes de base de datos (drivers, ORMs, connection strings), llamadas a APIs externas (fetch/axios/SDKs de terceros), variables de entorno relacionadas a servicios externos, y colas/mensajería si las hay
+   - **Agente Orquestador** — combina el mapa de estructura con las integraciones detectadas y arma el grafo final que consume el frontend
 
-2. **Visualización** con grafo interactivo (react-flow) coloreado por estado de trazabilidad:
-   - 🟢 trazado — tiene spec vigente
-   - 🟡 drift — spec existe pero está desactualizada respecto al código
-   - 🔴 sin trazabilidad — caja negra, no hay spec
+2. **Visualización** con grafo interactivo (react-flow):
+   - Nodos de **carpetas/archivos**, agrupados por su ubicación real en el árbol del proyecto
+   - Nodos de **integración** diferenciados visualmente (color/ícono distinto) para bases de datos y APIs externas, conectados por una arista al módulo que los usa
+   - Click en un nodo → panel de detalle: ruta del archivo, imports/exports, y en el caso de integraciones, qué se detectó (ej. "usa `pg` para conectar a Postgres", "llama a `api.stripe.com`")
 
-3. **Generación on-demand** — click en un nodo rojo → el agente genera la spec faltante en vivo en EARS, lista para guardarse
+3. **Vista de resumen** del proyecto: cantidad de módulos, cantidad de integraciones detectadas (bases de datos y APIs), y lenguaje/stack predominante — un primer vistazo rápido antes de entrar al grafo
 
 ### Alcance estricto del MVP (lo que se compromete en 5 días)
 
 - Input: solo URL de GitHub pública (cubre tanto "conectar repositorio" como "clonar por URL" — son el mismo mecanismo por debajo)
-- Stack analizado: solo TypeScript/JavaScript
-- Grafo estático (carpetas + imports), sin trazas de runtime
-- Analizador + Redactor EARS + Spec Health Score de punta a punta
-- Output guardado en `.kiro/specs/` del repo analizado
+- Stack analizado: todos los archivos relevantes del repositorio; las aristas de dependencia (imports) se extraen solo en TS/JS, pero todos los archivos aparecen como nodos en el grafo
+- Grafo estático (carpetas + imports + integraciones detectadas por patrones de código), sin trazas de runtime
+- Detección de integraciones limitada a patrones comunes y explícitos en el código (imports de drivers de BD conocidos, llamadas HTTP a dominios externos, SDKs de terceros reconocibles)
+- Analizador + Agente de Integraciones + Orquestador de punta a punta
 
 ### Stretch goals (solo día 4+ si van adelantados)
 
-- Drift-checker contra specs existentes
-- Generador de steering (`product.md` / `tech.md` / `structure.md`)
-- Soporte multi-lenguaje
-- Edición de spec antes de guardar
 - Input por carpeta local (drag-folder)
+- Soporte multi-lenguaje
+- Detección de integraciones más profunda (colas, websockets, variables de entorno no explícitas)
+- Exportar el grafo (imagen o JSON)
+- Buscar/filtrar nodos por nombre, tipo o integración
 
 ## Stack tecnológico
 
@@ -62,30 +56,22 @@ En la práctica, TrazIA funciona como un **Visualizador de Arquitectura**: el ob
 - **Agentes:** AWS Lambda (una función por agente)
 - **IA:** AWS Bedrock en `sa-east-1` (São Paulo), vía AnthropicBedrockMantle
   (`@anthropic-ai/bedrock-sdk`) — `anthropic.claude-haiku-4-5` (Analizador),
-  `anthropic.claude-sonnet-4-6` (Redactor EARS). IDs y región por variable
-  de entorno, nunca hardcodeados.
-- **Persistencia:** DynamoDB (histórico de Spec Health Score), S3 (hosting frontend)
-- **Specs del producto:** formato EARS, guardadas en `.kiro/specs/`
+  `anthropic.claude-sonnet-4-6` (Agente de Integraciones). IDs y región por
+  variable de entorno, nunca hardcodeados.
+- **Persistencia:** DynamoDB (caché de escaneos ya realizados, para no re-analizar el mismo repo en cada visita), S3 (hosting frontend)
 
 ## Estructura del proyecto
 
 ```
 backend/
   agents/
-    analyzer/      → Agente Analizador (mapeo de módulos y dependencias)
-    ears-writer/   → Agente Redactor EARS (inferencia y redacción de specs)
-    orchestrator/  → Agente Orquestador (Spec Health Score)
-  shared/          → tipos TypeScript compartidos, contrato JSON entre 
-frontend/          → aplicación React con react-flow
+    analyzer/         → Agente Analizador (mapeo de carpetas, archivos y dependencias internas)
+    integrations/      → Agente de Integraciones (detección de BD y APIs externas)
+    orchestrator/      → Agente Orquestador (arma el grafo final)
+  shared/              → tipos TypeScript compartidos, contrato JSON entre 
+frontend/              → aplicación React con react-flow
 .kiro/
-  specs/           → specs EARS del propio proyecto trazIA
-  steering/        → este archivo y convenciones
+  steering/            → este archivo y convenciones
 ```
 
 Cada agente vive en su propia carpeta bajo `packages/backend/src/agents/` y se despliega como una función Lambda independiente.
-
-## Uso de Kiro en el proyecto
-
-El producto final *es* la estructura de Kiro generada y visualizada — no es decorativo. TrazIA usa specs EARS para su propio desarrollo (spec-driven), y el output que genera se guarda directo en `.kiro/specs/` del repo analizado. Kiro es tanto la herramienta de construcción como la demostración viva del concepto.
-
-Esta convención de Kiro (EARS + `.kiro/specs/`) se aplica **aunque el repo analizado nunca haya usado Kiro**: un sistema puede tener specs sin haber sido construido con Kiro, porque "spec" es un concepto independiente de la herramienta — Kiro aporta la convención (formato + ubicación), no el concepto en sí. TrazIA elige mantener EARS como formato de salida (y no documentación genérica en prosa libre) porque es lo que habilita drift-checking y Spec Health Score de forma verificable; la prosa libre es más amigable de leer pero mucho más difícil de comparar automáticamente contra el código.

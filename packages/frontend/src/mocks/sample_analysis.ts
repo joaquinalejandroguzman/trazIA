@@ -1,261 +1,202 @@
 import type { AnalysisResult } from '../types'
 
-// Datos de ejemplo basados en la estructura REAL del proyecto TrazIA
-// Refleja la arquitectura de agentes (analyzer, ears-writer, orchestrator) + rutas + shared types
+// Datos de ejemplo basados en un repo hipotético tipo e-commerce
+// Muestra la detección de módulos, dependencias internas e integraciones externas
 export const SAMPLE_ANALYSIS: AnalysisResult = {
-  repoUrl: 'https://github.com/usuario/trazia-backend',
+  repoUrl: 'https://github.com/usuario/mi-ecommerce',
   analyzedAt: new Date().toISOString(),
-  projectHealthScore: 58,
-  totalModules: 18,
-  tracedCount: 6,
-  driftCount: 3,
-  untracedCount: 9,
+  totalModules: 12,
+  totalIntegrations: 4,
+  primaryLanguage: 'TypeScript',
+  folders: [
+    { id: 'src', name: 'src', type: 'folder', path: 'src', childCount: 4 },
+    { id: 'src/routes', name: 'routes', type: 'folder', path: 'src/routes', parentFolder: 'src', childCount: 3 },
+    { id: 'src/services', name: 'services', type: 'folder', path: 'src/services', parentFolder: 'src', childCount: 5 },
+    { id: 'src/db', name: 'db', type: 'folder', path: 'src/db', parentFolder: 'src', childCount: 1 },
+    { id: 'src/utils', name: 'utils', type: 'folder', path: 'src/utils', parentFolder: 'src', childCount: 1 },
+  ],
   modules: [
     // ============ Punto de entrada ============
     {
-      id: 'packages/backend/src/app.ts',
-      name: 'app.ts',
-      path: 'packages/backend/src/app.ts',
-      specStatus: 'traced',
-      specHealthScore: 92,
+      id: 'src/app.ts',
+      name: 'app',
+      type: 'module',
+      path: 'src/app.ts',
+      parentFolder: 'src',
       dependencies: [
-        'packages/backend/src/routes/health.ts',
-        'packages/backend/src/routes/analyze.ts',
-        'packages/backend/src/routes/generate_spec.ts',
+        'src/routes/products.ts',
+        'src/routes/orders.ts',
+        'src/routes/auth.ts',
       ],
-      linesOfCode: 58,
+      linesOfCode: 45,
       lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      specContent: `# Servidor Express Principal
-
-**WHEN** el servidor Express inicia
-**THEN** el sistema **SHALL** registrar las rutas /health, /api/analyze y /api/generate-spec
-
-**WHEN** se recibe una petición HTTP
-**THEN** el sistema **SHALL** parsear el body como JSON mediante express.json()
-
-**IF** el puerto no está definido en process.env.PORT
-**THEN** el sistema **SHALL** usar 3001 como puerto por defecto`,
     },
 
-    // ============ Rutas de API ============
+    // ============ Rutas ============
     {
-      id: 'packages/backend/src/routes/health.ts',
-      name: 'routes/health',
-      path: 'packages/backend/src/routes/health.ts',
-      specStatus: 'traced',
-      specHealthScore: 100,
-      dependencies: [],
-      linesOfCode: 24,
-      lastModified: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      specContent: `# Health Check Endpoint
-
-**WHEN** se recibe GET /health
-**THEN** el sistema **SHALL** responder con status 200 y body { "status": "ok", "service": "trazia-backend" }`,
-    },
-    {
-      id: 'packages/backend/src/routes/analyze.ts',
-      name: 'routes/analyze',
-      path: 'packages/backend/src/routes/analyze.ts',
-      specStatus: 'untraced',
-      specHealthScore: 22,
-      dependencies: [
-        'packages/backend/src/shared/types.ts',
-        'packages/backend/src/agents/analyzer/index.ts',
-        'packages/backend/src/agents/orchestrator/index.ts',
-      ],
-      linesOfCode: 48,
-      lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'packages/backend/src/routes/generate_spec.ts',
-      name: 'routes/generate_spec',
-      path: 'packages/backend/src/routes/generate_spec.ts',
-      specStatus: 'untraced',
-      specHealthScore: 18,
-      dependencies: [
-        'packages/backend/src/shared/types.ts',
-        'packages/backend/src/agents/ears-writer/index.ts',
-      ],
-      linesOfCode: 52,
-      lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-
-    // ============ Agente Analizador ============
-    {
-      id: 'packages/backend/src/agents/analyzer/index.ts',
-      name: 'agents/analyzer/index',
-      path: 'packages/backend/src/agents/analyzer/index.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
-      dependencies: ['packages/backend/src/agents/analyzer/analyzer.ts'],
-      linesOfCode: 8,
-      lastModified: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'packages/backend/src/agents/analyzer/analyzer.ts',
-      name: 'agents/analyzer/analyzer',
-      path: 'packages/backend/src/agents/analyzer/analyzer.ts',
-      specStatus: 'drift',
-      specHealthScore: 45,
-      dependencies: [
-        'packages/backend/src/shared/types.ts',
-        'packages/backend/src/utils/ast_parser.ts',
-        'packages/backend/src/utils/dependency_graph.ts',
-      ],
-      linesOfCode: 18,
-      lastModified: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(),
-      specContent: `# Agente Analizador de Repositorios
-
-**WHEN** se recibe la ruta de un repositorio local
-**THEN** el sistema **SHALL** escanear recursivamente todos los archivos .ts y .js
-
-[⚠️ SPEC DESACTUALIZADA - código scaffold recién creado, falta implementar lógica]`,
-    },
-
-    // ============ Agente Redactor EARS ============
-    {
-      id: 'packages/backend/src/agents/ears-writer/index.ts',
-      name: 'agents/ears-writer/index',
-      path: 'packages/backend/src/agents/ears-writer/index.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
-      dependencies: ['packages/backend/src/agents/ears-writer/ears_writer.ts'],
-      linesOfCode: 8,
-      lastModified: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'packages/backend/src/agents/ears-writer/ears_writer.ts',
-      name: 'agents/ears-writer/ears_writer',
-      path: 'packages/backend/src/agents/ears-writer/ears_writer.ts',
-      specStatus: 'drift',
-      specHealthScore: 38,
-      dependencies: [
-        'packages/backend/src/shared/types.ts',
-        'packages/backend/src/services/bedrock_client.ts',
-      ],
-      linesOfCode: 24,
-      lastModified: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(),
-      specContent: `# Agente Redactor EARS
-
-**WHEN** se recibe código fuente de un módulo sin spec
-**THEN** el sistema **SHALL** invocar Claude Sonnet vía AWS Bedrock para inferir su intención
-
-[⚠️ SPEC DESACTUALIZADA - lógica de invocación a Bedrock aún no implementada]`,
-    },
-
-    // ============ Agente Orquestador ============
-    {
-      id: 'packages/backend/src/agents/orchestrator/index.ts',
-      name: 'agents/orchestrator/index',
-      path: 'packages/backend/src/agents/orchestrator/index.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
-      dependencies: ['packages/backend/src/agents/orchestrator/orchestrator.ts'],
-      linesOfCode: 8,
-      lastModified: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'packages/backend/src/agents/orchestrator/orchestrator.ts',
-      name: 'agents/orchestrator/orchestrator',
-      path: 'packages/backend/src/agents/orchestrator/orchestrator.ts',
-      specStatus: 'drift',
-      specHealthScore: 42,
-      dependencies: ['packages/backend/src/shared/types.ts'],
-      linesOfCode: 21,
-      lastModified: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString(),
-      specContent: `# Agente Orquestador - Spec Health Score
-
-**WHEN** se recibe una lista de módulos con sus specs
-**THEN** el sistema **SHALL** calcular un score 0-100 por módulo comparando spec vs código actual
-
-[⚠️ SPEC DESACTUALIZADA - algoritmo de comparación EARS vs código no implementado]`,
-    },
-
-    // ============ Tipos compartidos ============
-    {
-      id: 'packages/backend/src/shared/types.ts',
-      name: 'shared/types',
-      path: 'packages/backend/src/shared/types.ts',
-      specStatus: 'traced',
-      specHealthScore: 88,
-      dependencies: [],
+      id: 'src/routes/products.ts',
+      name: 'routes/products',
+      type: 'module',
+      path: 'src/routes/products.ts',
+      parentFolder: 'src/routes',
+      dependencies: ['src/services/product_service.ts'],
       linesOfCode: 62,
-      lastModified: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      specContent: `# Contrato JSON entre Agentes
+      lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'src/routes/orders.ts',
+      name: 'routes/orders',
+      type: 'module',
+      path: 'src/routes/orders.ts',
+      parentFolder: 'src/routes',
+      dependencies: ['src/services/order_service.ts', 'src/services/payment_service.ts'],
+      linesOfCode: 88,
+      lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'src/routes/auth.ts',
+      name: 'routes/auth',
+      type: 'module',
+      path: 'src/routes/auth.ts',
+      parentFolder: 'src/routes',
+      dependencies: ['src/services/auth_service.ts'],
+      linesOfCode: 54,
+      lastModified: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
 
-**WHERE** se definen los tipos compartidos del sistema
-**THE** interfaz ModuleNode **SHALL** incluir: id, name, path, specStatus, specHealthScore, dependencies
+    // ============ Servicios ============
+    {
+      id: 'src/services/product_service.ts',
+      name: 'services/product_service',
+      type: 'module',
+      path: 'src/services/product_service.ts',
+      parentFolder: 'src/services',
+      dependencies: ['src/db/connection.ts'],
+      linesOfCode: 120,
+      lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'src/services/order_service.ts',
+      name: 'services/order_service',
+      type: 'module',
+      path: 'src/services/order_service.ts',
+      parentFolder: 'src/services',
+      dependencies: ['src/db/connection.ts', 'src/services/notification_service.ts'],
+      linesOfCode: 145,
+      lastModified: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'src/services/payment_service.ts',
+      name: 'services/payment_service',
+      type: 'module',
+      path: 'src/services/payment_service.ts',
+      parentFolder: 'src/services',
+      dependencies: [],
+      linesOfCode: 98,
+      lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'src/services/auth_service.ts',
+      name: 'services/auth_service',
+      type: 'module',
+      path: 'src/services/auth_service.ts',
+      parentFolder: 'src/services',
+      dependencies: ['src/db/connection.ts'],
+      linesOfCode: 76,
+      lastModified: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'src/services/notification_service.ts',
+      name: 'services/notification_service',
+      type: 'module',
+      path: 'src/services/notification_service.ts',
+      parentFolder: 'src/services',
+      dependencies: [],
+      linesOfCode: 52,
+      lastModified: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    },
 
-**THE** tipo SpecStatus **SHALL** ser exactamente 'traced' | 'drift' | 'untraced'
-
-**WHERE** los agentes se comunican entre sí
-**THE** sistema **SHALL** usar AnalysisResult como formato de respuesta del pipeline completo`,
+    // ============ Base de datos ============
+    {
+      id: 'src/db/connection.ts',
+      name: 'db/connection',
+      type: 'module',
+      path: 'src/db/connection.ts',
+      parentFolder: 'src/db',
+      dependencies: [],
+      linesOfCode: 34,
+      lastModified: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     },
 
     // ============ Utilidades ============
     {
-      id: 'packages/backend/src/utils/connect_optional_service.ts',
-      name: 'utils/connect_optional_service',
-      path: 'packages/backend/src/utils/connect_optional_service.ts',
-      specStatus: 'traced',
-      specHealthScore: 95,
+      id: 'src/utils/logger.ts',
+      name: 'utils/logger',
+      type: 'module',
+      path: 'src/utils/logger.ts',
+      parentFolder: 'src/utils',
       dependencies: [],
-      linesOfCode: 32,
-      lastModified: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-
-    // ============ Tipos de salud ============
-    {
-      id: 'packages/backend/src/types/health.ts',
-      name: 'types/health',
-      path: 'packages/backend/src/types/health.ts',
-      specStatus: 'traced',
-      specHealthScore: 100,
-      dependencies: [],
-      linesOfCode: 12,
+      linesOfCode: 28,
       lastModified: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     },
-
-    // ============ Módulos sin spec (caja negra) ============
     {
-      id: 'packages/backend/src/services/git_cloner.ts',
-      name: 'services/git_cloner',
-      path: 'packages/backend/src/services/git_cloner.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
+      id: 'src/types/index.ts',
+      name: 'types/index',
+      type: 'module',
+      path: 'src/types/index.ts',
+      parentFolder: 'src',
       dependencies: [],
-      linesOfCode: 142,
-      lastModified: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      linesOfCode: 42,
+      lastModified: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ],
+  integrations: [
+    {
+      id: 'integration:postgresql-pg',
+      name: 'PostgreSQL (pg)',
+      type: 'database',
+      detectedIn: ['src/db/connection.ts'],
+      description: 'Usa `pg` para conectar a PostgreSQL',
     },
     {
-      id: 'packages/backend/src/services/bedrock_client.ts',
-      name: 'services/bedrock_client',
-      path: 'packages/backend/src/services/bedrock_client.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
-      dependencies: [],
-      linesOfCode: 98,
-      lastModified: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      id: 'integration:stripe',
+      name: 'Stripe',
+      type: 'external_api',
+      detectedIn: ['src/services/payment_service.ts'],
+      description: 'Usa Stripe SDK para procesar pagos',
     },
     {
-      id: 'packages/backend/src/utils/ast_parser.ts',
-      name: 'utils/ast_parser',
-      path: 'packages/backend/src/utils/ast_parser.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
-      dependencies: ['packages/backend/src/shared/types.ts'],
-      linesOfCode: 215,
-      lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      id: 'integration:sendgrid',
+      name: 'SendGrid',
+      type: 'external_api',
+      detectedIn: ['src/services/notification_service.ts'],
+      description: 'Usa @sendgrid/mail para enviar emails transaccionales',
     },
     {
-      id: 'packages/backend/src/utils/dependency_graph.ts',
-      name: 'utils/dependency_graph',
-      path: 'packages/backend/src/utils/dependency_graph.ts',
-      specStatus: 'untraced',
-      specHealthScore: 0,
-      dependencies: ['packages/backend/src/shared/types.ts'],
-      linesOfCode: 178,
-      lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      id: 'integration:api.github.com',
+      name: 'api.github.com',
+      type: 'external_api',
+      detectedIn: ['src/services/auth_service.ts'],
+      description: 'Llama a api.github.com (detectado por fetch/axios)',
     },
+  ],
+  edges: [
+    // Dependencias entre módulos
+    { source: 'src/app.ts', target: 'src/routes/products.ts', type: 'dependency' },
+    { source: 'src/app.ts', target: 'src/routes/orders.ts', type: 'dependency' },
+    { source: 'src/app.ts', target: 'src/routes/auth.ts', type: 'dependency' },
+    { source: 'src/routes/products.ts', target: 'src/services/product_service.ts', type: 'dependency' },
+    { source: 'src/routes/orders.ts', target: 'src/services/order_service.ts', type: 'dependency' },
+    { source: 'src/routes/orders.ts', target: 'src/services/payment_service.ts', type: 'dependency' },
+    { source: 'src/routes/auth.ts', target: 'src/services/auth_service.ts', type: 'dependency' },
+    { source: 'src/services/product_service.ts', target: 'src/db/connection.ts', type: 'dependency' },
+    { source: 'src/services/order_service.ts', target: 'src/db/connection.ts', type: 'dependency' },
+    { source: 'src/services/order_service.ts', target: 'src/services/notification_service.ts', type: 'dependency' },
+    { source: 'src/services/auth_service.ts', target: 'src/db/connection.ts', type: 'dependency' },
+    // Integraciones externas
+    { source: 'src/db/connection.ts', target: 'integration:postgresql-pg', type: 'integration' },
+    { source: 'src/services/payment_service.ts', target: 'integration:stripe', type: 'integration' },
+    { source: 'src/services/notification_service.ts', target: 'integration:sendgrid', type: 'integration' },
+    { source: 'src/services/auth_service.ts', target: 'integration:api.github.com', type: 'integration' },
   ],
 }

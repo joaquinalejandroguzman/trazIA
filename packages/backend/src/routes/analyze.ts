@@ -2,10 +2,12 @@ import { Router, type Request, type Response } from 'express'
 import type { AnalyzeRequest, AnalysisResult } from '../shared/types'
 import { cloneRepository, cleanupClonedRepo } from '../services/git_cloner'
 import { analyzeRepository } from '../agents/analyzer/analyzer'
+import { detectRepositoryIntegrations } from '../agents/integrations/integrations'
+import { buildAnalysisResult } from '../agents/orchestrator/orchestrator'
 
 const router = Router()
 
-// POST /api/analyze — clona un repositorio y analiza su arquitectura
+// POST /api/analyze — clona un repositorio y analiza su arquitectura e integraciones
 router.post('/analyze', async (req: Request, res: Response) => {
   let clonedPath: string | null = null
 
@@ -38,36 +40,32 @@ router.post('/analyze', async (req: Request, res: Response) => {
       mensaje: `Repositorio clonado en ${clonedPath}`,
     }))
 
-    // Paso 2: Analizar estructura (módulos + dependencias)
+    // Paso 2: Analizar estructura (módulos + dependencias internas)
     const modules = await analyzeRepository(clonedPath)
 
     console.log(JSON.stringify({
       agente: 'analyze-route',
       módulo: 'analyzer',
-      mensaje: `Análisis completo: ${modules.length} módulos detectados`,
+      mensaje: `Análisis de estructura completo: ${modules.length} módulos detectados`,
     }))
 
-    // Paso 3: Calcular conteos por estado
-    // (Sin el Orquestador, todos los módulos empiezan como 'untraced')
-    const tracedCount = modules.filter((m) => m.specStatus === 'traced').length
-    const driftCount = modules.filter((m) => m.specStatus === 'drift').length
-    const untracedCount = modules.filter((m) => m.specStatus === 'untraced').length
+    // Paso 3: Detectar integraciones externas (BD, APIs, SDKs)
+    const integrations = await detectRepositoryIntegrations(clonedPath)
 
-    // Calcular score del proyecto (por ahora: proporción de traced * 100)
-    const projectHealthScore = modules.length > 0
-      ? Math.round((tracedCount * 100 + driftCount * 60) / modules.length)
-      : 0
+    console.log(JSON.stringify({
+      agente: 'analyze-route',
+      módulo: 'integrations',
+      mensaje: `Integraciones detectadas: ${integrations.length}`,
+    }))
 
-    const result: AnalysisResult = {
-      repoUrl: repoUrl.trim(),
-      analyzedAt: new Date().toISOString(),
-      projectHealthScore,
-      modules,
-      totalModules: modules.length,
-      tracedCount,
-      driftCount,
-      untracedCount,
-    }
+    // Paso 4: Orquestar — combinar estructura + integraciones en el grafo final
+    const result: AnalysisResult = buildAnalysisResult(repoUrl.trim(), modules, integrations)
+
+    console.log(JSON.stringify({
+      agente: 'analyze-route',
+      módulo: 'orchestrator',
+      mensaje: `Grafo armado: ${result.totalModules} módulos, ${result.totalIntegrations} integraciones, ${result.edges.length} aristas`,
+    }))
 
     res.json(result)
   } catch (error: unknown) {
