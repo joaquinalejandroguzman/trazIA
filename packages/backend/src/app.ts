@@ -1,3 +1,4 @@
+import 'dotenv/config'
 // Punto de entrada del servidor Express.
 // Exporta `app` (para testing) y `startServer` (para uso programático).
 // El servidor arranca automáticamente solo cuando este archivo es el módulo de entrada.

@@ -103,7 +103,7 @@ Integración de AWS Bedrock como motor de IA real en el backend de TrazIA. El pi
   - Preguntar al usuario si hay dudas antes de continuar
 
 - [ ] 7. Actualizar el Orchestrator y la ruta de análisis
-  - [-] 7.1 Actualizar `packages/backend/src/agents/orchestrator/orchestrator.ts` para calcular `projectHealthScore` real
+  - [ ] 7.1 Actualizar `packages/backend/src/agents/orchestrator/orchestrator.ts` para calcular `projectHealthScore` real
     - Implementar `calculateProjectHealthScore(modules)`: si lista vacía retornar 0; si no, `Math.round(sum(specHealthScore) / n)`
     - Incluir `projectHealthScore` en el objeto retornado por `buildAnalysisResult`
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
@@ -123,7 +123,7 @@ Integración de AWS Bedrock como motor de IA real en el backend de TrazIA. El pi
     - _Requirements: 7.2, 6.1_
 
 - [ ] 8. Documentar variables de entorno
-  - [~] 8.1 Actualizar `packages/backend/.env.example` con todas las variables Bedrock
+  - [ ] 8.1 Actualizar `packages/backend/.env.example` con todas las variables Bedrock
     - Agregar `BEDROCK_REGION` con valor de ejemplo no funcional y comentario descriptivo
     - Agregar `BEDROCK_MODEL_ANALYZER` con valor de ejemplo y comentario
     - Agregar `BEDROCK_MODEL_EARS` con valor de ejemplo y comentario
@@ -132,7 +132,7 @@ Integración de AWS Bedrock como motor de IA real en el backend de TrazIA. El pi
     - Agregar `MAX_RETRY_DELAY_MS` (opcional, default 30000) con comentario
     - _Requirements: 6.3, 6.4_
 
-- [~] 9. Checkpoint final — Validar integración completa
+- [ ] 9. Checkpoint final — Validar integración completa
   - Ejecutar `npm run build` en `packages/backend` y confirmar compilación sin errores de TypeScript
   - Ejecutar `npm test` y confirmar que todos los tests pasan (property tests + unit tests)
   - Preguntar al usuario si hay dudas antes de considerar la tarea completa
