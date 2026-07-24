@@ -43,7 +43,94 @@ export function useAnalysis() {
     }
   }, [])
 
-  // Resetea el estado para analizar un nuevo repo
+  // Genera la spec EARS on-demand para un módulo sin trazabilidad
+  const generateSpec = useCallback(
+    async (moduleId: string): Promise<GenerateSpecResponse | null> => {
+      setGeneratingSpec(moduleId)
+
+      // Modo mock: genera spec de ejemplo con delay simulado
+      if (USE_MOCK) {
+        await sleep(2200)
+        const mockSpec = `# Spec generada para ${moduleId}
+
+**WHEN** el módulo es invocado con parámetros válidos
+**THEN** el sistema **SHALL** procesar la petición y retornar el resultado esperado
+
+**IF** los parámetros son inválidos
+**THEN** el sistema **SHALL** lanzar un error descriptivo con contexto
+
+**WHERE** el módulo interactúa con servicios externos
+**THE** sistema **SHALL** manejar timeouts y errores de red con reintentos`
+
+        const mockResponse: GenerateSpecResponse = {
+          moduleId,
+          specContent: mockSpec,
+          savedPath: `.kiro/specs/${moduleId.replace(/\//g, '_')}.md`,
+        }
+
+        if (result) {
+          const updatedModules: ModuleNode[] = result.modules.map((m) =>
+            m.id === moduleId
+              ? {
+                  ...m,
+                  specStatus: 'traced' as const,
+                  specHealthScore: 78,
+                  specContent: mockSpec,
+                }
+              : m
+          )
+          const newTracedCount = result.tracedCount + 1
+          const newUntracedCount = Math.max(0, result.untracedCount - 1)
+          setResult({
+            ...result,
+            modules: updatedModules,
+            tracedCount: newTracedCount,
+            untracedCount: newUntracedCount,
+            projectHealthScore: Math.round(
+              ((newTracedCount * 100 + result.driftCount * 60) / result.totalModules)
+            ),
+          })
+        }
+
+        setGeneratingSpec(null)
+        return mockResponse
+      }
+
+      try {
+        const response = await apiClient.post<GenerateSpecResponse>('/api/generate-spec', {
+          moduleId,
+          repoUrl: result?.repoUrl,
+        })
+
+        // Actualiza el módulo en el resultado local con la spec generada
+        if (result) {
+          const updatedModules: ModuleNode[] = result.modules.map((m) =>
+            m.id === moduleId
+              ? { ...m, specStatus: 'traced' as const, specContent: response.data.specContent }
+              : m
+          )
+          setResult({ ...result, modules: updatedModules })
+        }
+
+        return response.data
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Error al generar spec'
+        setError(message)
+        return null
+      } finally {
+        setGeneratingSpec(null)
+      }
+    },
+    [result]
+  )
+
+  // Limpia solo el error sin tocar el análisis en curso ni el resultado
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  // Resetea el estado completo para analizar un nuevo repo
   const reset = useCallback(() => {
     setStatus('idle')
     setResult(null)
@@ -55,6 +142,8 @@ export function useAnalysis() {
     result,
     error,
     analyzeRepo,
+    generateSpec,
+    clearError,
     reset,
   }
 }

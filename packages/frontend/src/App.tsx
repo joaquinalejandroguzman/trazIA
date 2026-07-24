@@ -13,6 +13,8 @@ import './App.css'
 const App: React.FC = () => {
   const { status, result, error, analyzeRepo, reset } = useAnalysis()
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+  const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
+  const [selectedModule, setSelectedModule] = useState<ModuleNode | null>(null)
 
   const handleAnalyze = (repoUrl: string) => {
     setSelectedNode(null)
@@ -39,7 +41,7 @@ const App: React.FC = () => {
       {/* Banner de error si falla el análisis */}
       {error && (
         <div className="app__error-container">
-          <ErrorBanner message={error} onDismiss={reset} />
+          <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
 
