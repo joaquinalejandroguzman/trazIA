@@ -12,28 +12,27 @@ import './App.css'
 // Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
   const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
-  const [selectedModule, setSelectedModule] = useState<ModuleNode | null>(null)
+  // Guardamos solo el id para evitar closures obsoletos: el objeto se deriva en cada render
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
+  const selectedModule = result?.modules.find((m) => m.id === selectedModuleId) ?? null
 
   const handleAnalyze = (repoUrl: string) => {
-    setSelectedModule(null)
+    setSelectedModuleId(null)
     analyzeRepo(repoUrl)
   }
 
   const handleGenerateSpec = async (moduleId: string) => {
-    const response = await generateSpec(moduleId)
-    if (response) {
-      // Actualiza el módulo seleccionado con la spec generada
-      const updated = result?.modules.find((m) => m.id === moduleId)
-      if (updated) setSelectedModule(updated)
-    }
+    // No hace falta sincronizar nada a mano: selectedModule se recalcula
+    // automáticamente en el siguiente render con los datos actualizados de result
+    await generateSpec(moduleId)
   }
 
   const handleNodeClick = (module: ModuleNode) => {
-    setSelectedModule(module)
+    setSelectedModuleId(module.id)
   }
 
   const handleClosePanel = () => {
-    setSelectedModule(null)
+    setSelectedModuleId(null)
   }
 
   const showDashboard = status === 'success' && result
