@@ -211,6 +211,8 @@ function buildLayoutNodes(
           </div>
         ),
       },
+      width: size.width,
+      height: size.height,
       style: {
         width: size.width,
         height: size.height,
@@ -289,6 +291,8 @@ function buildLayoutNodes(
           </div>
         ),
       },
+      width: FILE_NODE_WIDTH,
+      height: FILE_NODE_HEIGHT,
       style: {
         width: FILE_NODE_WIDTH,
         height: FILE_NODE_HEIGHT,
@@ -333,6 +337,8 @@ function buildLayoutNodes(
           </div>
         ),
       },
+      width: INTEGRATION_NODE_WIDTH,
+      height: INTEGRATION_NODE_HEIGHT,
       style: {
         width: INTEGRATION_NODE_WIDTH,
         height: INTEGRATION_NODE_HEIGHT,
