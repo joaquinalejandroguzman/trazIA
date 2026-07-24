@@ -11,14 +11,19 @@ import './App.css'
 
 // Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
-  const { status, result, error, analyzeRepo, reset } = useAnalysis()
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
-  const [selectedModule, setSelectedModule] = useState<ModuleNode | null>(null)
+  // Guardamos el nodo seleccionado completo para poder mostrarlo en el panel
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
 
   const handleAnalyze = (repoUrl: string) => {
     setSelectedNode(null)
     analyzeRepo(repoUrl)
+  }
+
+  const handleGenerateSpec = async (moduleId: string) => {
+    await generateSpec(moduleId)
+    // Actualizamos el nodo seleccionado con los datos frescos del result
+    // (se recalcula en el siguiente render si hace falta)
   }
 
   const handleNodeClick = (node: GraphNode) => {

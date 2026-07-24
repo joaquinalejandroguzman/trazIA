@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import apiClient from '../services/api_client'
 import { SAMPLE_ANALYSIS } from '../mocks/sample_analysis'
-import type { AnalysisResult, AnalysisStatus } from '../types'
+import type { AnalysisResult, AnalysisStatus, ModuleNode, GenerateSpecResponse } from '../types'
 
 // Activa datos mock cuando el backend no está disponible
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -16,6 +16,7 @@ export function useAnalysis() {
   const [status, setStatus] = useState<AnalysisStatus>('idle')
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [generatingSpec, setGeneratingSpec] = useState<string | null>(null)
 
   // Dispara el análisis completo del repo (pipeline: Analizador → Integraciones → Orquestador)
   const analyzeRepo = useCallback(async (repoUrl: string) => {
@@ -141,6 +142,7 @@ export function useAnalysis() {
     status,
     result,
     error,
+    generatingSpec,
     analyzeRepo,
     generateSpec,
     clearError,

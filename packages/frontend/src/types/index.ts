@@ -19,6 +19,10 @@ export interface ModuleNode {
   parentFolder?: string   // id de la carpeta padre (para agrupación visual)
   linesOfCode?: number
   lastModified?: string   // ISO date string
+  // Campos de trazabilidad (opcionales hasta que se genera spec)
+  specStatus?: SpecStatus
+  specHealthScore?: number
+  specContent?: string
 }
 
 // Nodo de carpeta — agrupa archivos visualmente
@@ -50,6 +54,9 @@ export interface GraphEdge {
   type: 'dependency' | 'integration'
 }
 
+// Estado de trazabilidad de un módulo
+export type SpecStatus = 'traced' | 'untraced' | 'drift'
+
 // Respuesta completa del pipeline de análisis (Orquestador)
 export interface AnalysisResult {
   repoUrl: string
@@ -61,6 +68,18 @@ export interface AnalysisResult {
   totalModules: number
   totalIntegrations: number   // BD + APIs externas detectadas
   primaryLanguage: string     // lenguaje/stack predominante
+  // Campos de trazabilidad
+  tracedCount: number         // módulos con spec generada
+  untracedCount: number       // módulos sin spec
+  driftCount: number          // módulos cuya spec no refleja el código actual
+  projectHealthScore: number  // score global de salud del proyecto (0-100)
+}
+
+// Respuesta del endpoint de generación de spec EARS
+export interface GenerateSpecResponse {
+  moduleId: string
+  specContent: string
+  savedPath: string
 }
 
 // Request para análisis
