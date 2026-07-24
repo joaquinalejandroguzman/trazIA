@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode, GraphEdge } from '../types'
-import { ZONE_COLORS, INTEGRATION_COLORS, getFileIcon, detectZone } from '../constants/theme'
+import { ZONE_COLORS, INTEGRATION_COLORS, getFileIcon, detectZone, getTraceabilityColor, getEffectiveScore } from '../constants/theme'
 
 // Dimensiones
 const FILE_NODE_WIDTH = 170
@@ -222,6 +222,11 @@ function buildLayoutNodes(
     // Nombre corto: solo el nombre del archivo
     const shortName = mod.path.split('/').pop() ?? mod.name
 
+    // Indicador de trazabilidad: solo cuando specStatus o specHealthScore están definidos
+    const hasTraceability = mod.specStatus !== undefined || mod.specHealthScore !== undefined
+    const effectiveScore = hasTraceability ? getEffectiveScore(mod.specStatus, mod.specHealthScore) : 0
+    const traceabilityColor = hasTraceability ? getTraceabilityColor(effectiveScore) : null
+
     nodes.push({
       id: mod.id,
       position,
@@ -239,6 +244,21 @@ function buildLayoutNodes(
             }}>
               {shortName}
             </span>
+            {/* Indicador circular de trazabilidad */}
+            {traceabilityColor && (
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  backgroundColor: traceabilityColor,
+                  flexShrink: 0,
+                  marginLeft: 'auto',
+                  transition: 'background-color 300ms',
+                }}
+                aria-label={`Trazabilidad: ${effectiveScore}%`}
+              />
+            )}
           </div>
         ),
       },

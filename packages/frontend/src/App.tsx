@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAnalysis } from './hooks/use_analysis'
 import { RepoInput } from './components/repo_input'
 import { ProjectSummary } from './components/project_summary'
@@ -14,6 +14,16 @@ const App: React.FC = () => {
   const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
   // Guardamos el nodo seleccionado completo para poder mostrarlo en el panel
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+
+  // Sincroniza el nodo seleccionado con los datos frescos de result.modules
+  useEffect(() => {
+    if (selectedNode && selectedNode.type === 'module' && result) {
+      const freshModule = result.modules.find((m) => m.id === selectedNode.id)
+      if (freshModule && freshModule !== selectedNode) {
+        setSelectedNode(freshModule)
+      }
+    }
+  }, [result, selectedNode])
 
   const handleAnalyze = (repoUrl: string) => {
     setSelectedNode(null)
@@ -75,6 +85,9 @@ const App: React.FC = () => {
           <ModulePanel
             node={selectedNode}
             onClose={handleClosePanel}
+            onGenerateSpec={handleGenerateSpec}
+            generatingSpec={generatingSpec}
+            specError={error}
           />
         </main>
       )}

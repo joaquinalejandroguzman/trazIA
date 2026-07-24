@@ -199,4 +199,9 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
     { source: 'src/services/notification_service.ts', target: 'integration:sendgrid', type: 'integration' },
     { source: 'src/services/auth_service.ts', target: 'integration:api.github.com', type: 'integration' },
   ],
+  // Campos de trazabilidad
+  tracedCount: 4,
+  untracedCount: 6,
+  driftCount: 2,
+  projectHealthScore: 42,
 }

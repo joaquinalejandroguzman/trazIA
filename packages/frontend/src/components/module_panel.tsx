@@ -1,13 +1,17 @@
 import React from 'react'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode } from '../types'
+import { getTraceabilityColor, getEffectiveScore } from '../constants/theme'
 
 interface ModulePanelProps {
   node: GraphNode | null
   onClose: () => void
+  onGenerateSpec: (moduleId: string) => Promise<void>
+  generatingSpec: string | null
+  specError: string | null
 }
 
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
-export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose }) => {
+export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError }) => {
   if (!node) return null
 
   const isModule = node.type === 'module'
@@ -88,6 +92,123 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose }) => {
                 </ul>
               </section>
             )}
+
+            {/* Sección de trazabilidad */}
+            {(() => {
+              const module = node as ModuleNode
+              const specStatus = module.specStatus
+              const specHealthScore = module.specHealthScore
+              const effectiveScore = getEffectiveScore(specStatus, specHealthScore)
+              const traceabilityColor = getTraceabilityColor(effectiveScore)
+              const hasScore = specHealthScore !== undefined
+              const scoreDisplay = hasScore ? `${Math.floor(specHealthScore)}%` : '0%'
+              const isGenerating = generatingSpec === module.id
+
+              // Badge de estado: texto y color según specStatus
+              const badgeText = specStatus === 'traced' ? 'Trazado'
+                : specStatus === 'drift' ? 'Drift'
+                : 'Sin spec'
+              const badgeColor = specStatus === 'traced' ? '#43a047'
+                : specStatus === 'drift' ? '#fdd835'
+                : '#e53935'
+
+              // Botón condicional según la zona efectiva
+              // Zona roja (0–33): "Generar Spec", zona amarilla (34–66): "Mejorar Spec", zona verde (67–100) + traced: sin botón
+              const showButton = !(specStatus === 'traced' && effectiveScore >= 67)
+              const buttonLabel = effectiveScore <= 33 ? 'Generar Spec' : 'Mejorar Spec'
+
+              return (
+                <section className="module-panel__section">
+                  <h3 className="module-panel__section-title">Trazabilidad</h3>
+
+                  {/* Score y badge de estado */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                      {hasScore ? scoreDisplay : 'Sin trazabilidad'}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        color: '#fff',
+                        backgroundColor: badgeColor,
+                      }}
+                    >
+                      {badgeText}
+                    </span>
+                  </div>
+
+                  {/* Score numérico cuando no hay trazabilidad (mostrar "0%" explícito) */}
+                  {!hasScore && (
+                    <span style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: 4 }}>
+                      0%
+                    </span>
+                  )}
+
+                  {/* Barra de progreso */}
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#e0e0e0',
+                      overflow: 'hidden',
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${hasScore ? Math.floor(specHealthScore) : 0}%`,
+                        height: '100%',
+                        borderRadius: 4,
+                        backgroundColor: traceabilityColor,
+                        transition: 'width 300ms, background-color 300ms',
+                      }}
+                    />
+                  </div>
+
+                  {/* Botón de generación/mejora de spec */}
+                  {showButton && (
+                    <button
+                      className="module-panel__generate-btn"
+                      onClick={() => !isGenerating && onGenerateSpec(module.id)}
+                      aria-disabled={isGenerating}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        backgroundColor: isGenerating ? '#bdbdbd' : '#1976d2',
+                        color: '#fff',
+                        fontSize: '0.85rem',
+                        fontWeight: 500,
+                        cursor: isGenerating ? 'not-allowed' : 'pointer',
+                        opacity: isGenerating ? 0.7 : 1,
+                        marginBottom: 8,
+                      }}
+                    >
+                      {isGenerating ? 'Generando...' : buttonLabel}
+                    </button>
+                  )}
+
+                  {/* Error truncado a 200 caracteres */}
+                  {specError && (
+                    <p
+                      style={{
+                        fontSize: '0.75rem',
+                        color: '#d32f2f',
+                        marginTop: 4,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {specError.length > 200 ? `${specError.slice(0, 200)}…` : specError}
+                    </p>
+                  )}
+                </section>
+              )
+            })()}
           </>
         )}
 

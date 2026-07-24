@@ -17,7 +17,8 @@ Esta feature se integra con la infraestructura existente:
 - **Traceability_Score**: Campo `specHealthScore` (número entero 0–100, inclusive en ambos extremos) del Module_Node que indica el nivel de cobertura de especificación EARS del módulo
 - **Effective_Score**: Valor final de score usado para Color_Interpolation después de aplicar las reglas de override por Spec_Status
 - **Spec_Status**: Campo `specStatus` del Module_Node con valores posibles: `'traced'`, `'untraced'`, `'drift'`
-- **Traceability_Color**: Color calculado por interpolación aplicado al Graph_Node según su Effective_Score
+- **Traceability_Color**: Color calculado por interpolación aplicado al Traceability_Indicator según su Effective_Score
+- **Traceability_Indicator**: Elemento circular (10px de diámetro) posicionado dentro del Graph_Node, a la derecha del texto del nombre de archivo, que muestra el Traceability_Color como color de relleno
 - **Red_Zone**: Effective_Score 0–33, color de salida desde rojo hacia near-amber (baja trazabilidad)
 - **Yellow_Zone**: Effective_Score 34–66, color de salida desde near-amber hacia near-green (trazabilidad parcial, spec desalineada)
 - **Green_Zone**: Effective_Score 67–100, color de salida desde near-green hacia verde completo (trazabilidad completa)
@@ -45,17 +46,17 @@ Esta feature se integra con la infraestructura existente:
 8. IF a Module_Node has no Spec_Status defined (specStatus is undefined), THEN THE Graph_Node SHALL treat it as untraced with effective score of 0
 9. WHEN both Spec_Status and Traceability_Score are defined for a Module_Node, THE Graph_Node SHALL apply the Spec_Status override rules (criteria 6 and 7) before applying the Color_Interpolation, such that Spec_Status takes precedence over raw Traceability_Score
 
-### Requirement 2: Indicador visual de trazabilidad en el borde del nodo
+### Requirement 2: Indicador visual de trazabilidad como círculo coloreado dentro del nodo
 
 **User Story:** Como desarrollador, quiero que el color de trazabilidad sea visible sin interferir con la zona cromática existente del nodo (Zone_Colors de frontend/backend/config/shared), para poder distinguir tanto la ubicación como la salud de cada módulo simultáneamente.
 
 #### Acceptance Criteria
 
-1. THE Graph_Node SHALL apply the Traceability_Color as a `borderLeft: 4px solid <Traceability_Color>` on Module_Node elements, overriding only the left side of the existing border while the top, right, and bottom borders retain the Zone_Colors `border` value (`1.5px solid <zone border color>`)
-2. THE Graph_Node SHALL preserve the existing Zone_Colors `bg` as background color and Zone_Colors `text` as text color from `ZONE_COLORS` for module nodes, without modification when the traceability left border is applied
-3. WHEN a Module_Node is selected, THE Graph_Node SHALL display both the traceability left border (`4px solid <Traceability_Color>`) and the existing selection highlight (`boxShadow: '0 0 0 2px rgba(0,0,0,0.2)'`), without one replacing the other
-4. IF the Traceability_Color is not yet available for a Module_Node (score has not been computed), THEN THE Graph_Node SHALL render the module node using only the Zone_Colors border on all four sides (default styling, no traceability left border)
-5. THE Traceability_Color left border SHALL only apply to nodes of type `'module'`; nodes of type `'folder'` and integration nodes (`'database'`, `'external_api'`) SHALL retain their current styling unchanged
+1. THE Graph_Node SHALL render a Traceability_Indicator (circular element of 10px diameter) filled with the Traceability_Color, positioned inside the node content area to the right of the file name text, vertically centered within the node height
+2. THE Graph_Node SHALL preserve the existing Zone_Colors `bg` as background color, Zone_Colors `text` as text color, and Zone_Colors `border` on all four sides from `ZONE_COLORS` for module nodes, without modification when the Traceability_Indicator is displayed
+3. WHEN a Module_Node is selected, THE Graph_Node SHALL display both the Traceability_Indicator (circle with Traceability_Color fill) and the existing selection highlight (`boxShadow: '0 0 0 2px rgba(0,0,0,0.2)'`), without one replacing the other
+4. IF the Traceability_Color is not yet available for a Module_Node (score has not been computed), THEN THE Graph_Node SHALL render the module node without the Traceability_Indicator (default styling, no circle displayed)
+5. THE Traceability_Indicator SHALL only appear on nodes of type `'module'`; nodes of type `'folder'` and integration nodes (`'database'`, `'external_api'`) SHALL retain their current styling unchanged without any traceability circle
 
 ### Requirement 3: Botón de generación de spec en el panel lateral
 
@@ -92,8 +93,8 @@ Esta feature se integra con la infraestructura existente:
 
 #### Acceptance Criteria
 
-1. WHEN the `generateSpec` function from useAnalysis_Hook completes successfully and updates `result.modules` with a new `specStatus` value for the target module, THE Graph_Node corresponding to that module SHALL update its border-left-color to the Traceability_Color mapped from the new Effective_Score within 1 second of the state update
-2. WHEN a Graph_Node's Effective_Score changes, THE Graph_Node SHALL apply a CSS transition of 300ms on the `border-left-color` property so the color change is visually animated rather than instant
+1. WHEN the `generateSpec` function from useAnalysis_Hook completes successfully and updates `result.modules` with a new `specStatus` value for the target module, THE Graph_Node corresponding to that module SHALL update the Traceability_Indicator fill color to the Traceability_Color mapped from the new Effective_Score within 1 second of the state update
+2. WHEN a Graph_Node's Effective_Score changes, THE Graph_Node SHALL apply a CSS transition of 300ms on the Traceability_Indicator `background-color` property so the color change is visually animated rather than instant
 3. THE ArchitectureGraph component SHALL re-render the affected Module_Node via React's standard reconciliation (driven by the updated `modules` prop from `result.modules`) without resetting the current viewport position or zoom level
 4. IF the `generateSpec` function fails (returns null or throws an error), THEN THE Graph_Node SHALL retain its previous Traceability_Color unchanged
 

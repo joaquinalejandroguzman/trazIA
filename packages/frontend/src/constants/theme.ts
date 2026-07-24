@@ -1,4 +1,4 @@
-import type { IntegrationType } from '../types'
+import type { IntegrationType, SpecStatus } from '../types'
 
 // Fuente de verdad única para los colores del grafo
 // Colores diferenciados por "zona" del proyecto y tipo de archivo
@@ -177,4 +177,82 @@ export const ZONE_DOT_COLORS: Record<ProjectZone, string> = {
   config: ZONE_COLORS.config.border,
   shared: ZONE_COLORS.shared.border,
   unknown: ZONE_COLORS.unknown.border,
+}
+
+// ============================================================
+// Trazabilidad — interpolación de color y score efectivo
+// ============================================================
+
+// Anchors RGB para la interpolación lineal de color de trazabilidad
+export const TRACEABILITY_ANCHORS = {
+  red:    { r: 0xe5, g: 0x39, b: 0x35 },  // #e53935 — score 0
+  yellow: { r: 0xfd, g: 0xd8, b: 0x35 },  // #fdd835 — score 50
+  green:  { r: 0x43, g: 0xa0, b: 0x47 },  // #43a047 — score 100
+} as const
+
+/**
+ * Interpola un color hexadecimal entre rojo → amarillo → verde
+ * según el score de trazabilidad (0–100).
+ *
+ * Interpolación lineal por canal RGB en dos segmentos:
+ *   [0, 50]   rojo → amarillo
+ *   [50, 100]  amarillo → verde
+ *
+ * Clamping: NaN/Infinity/-Infinity → 0, negativo → 0, >100 → 100
+ * Formato de salida: siempre `#rrggbb` en minúsculas (7 caracteres)
+ */
+export function getTraceabilityColor(score: number): string {
+  // Clamping de valores no finitos y fuera de rango
+  let s = Number.isFinite(score) ? score : 0
+  if (s < 0) s = 0
+  if (s > 100) s = 100
+
+  const { red, yellow, green } = TRACEABILITY_ANCHORS
+
+  let r: number
+  let g: number
+  let b: number
+
+  if (s <= 50) {
+    // Segmento [0, 50]: rojo → amarillo
+    const t = s / 50
+    r = Math.round(red.r + (yellow.r - red.r) * t)
+    g = Math.round(red.g + (yellow.g - red.g) * t)
+    b = Math.round(red.b + (yellow.b - red.b) * t)
+  } else {
+    // Segmento [50, 100]: amarillo → verde
+    const t = (s - 50) / 50
+    r = Math.round(yellow.r + (green.r - yellow.r) * t)
+    g = Math.round(yellow.g + (green.g - yellow.g) * t)
+    b = Math.round(yellow.b + (green.b - yellow.b) * t)
+  }
+
+  // Formato #rrggbb en minúsculas
+  const hex = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${hex(r)}${hex(g)}${hex(b)}`
+}
+
+/**
+ * Calcula el score efectivo aplicando las reglas de precedencia de specStatus:
+ * - specStatus undefined → 0 (tratar como untraced)
+ * - specStatus 'untraced' → 0 (siempre rojo, ignora score)
+ * - specStatus 'drift' → min(specHealthScore ?? 0, 50) (cap en 50)
+ * - specStatus 'traced' → specHealthScore ?? 0
+ */
+export function getEffectiveScore(
+  specStatus: SpecStatus | undefined,
+  specHealthScore: number | undefined
+): number {
+  const score = specHealthScore ?? 0
+
+  if (specStatus === undefined || specStatus === 'untraced') {
+    return 0
+  }
+
+  if (specStatus === 'drift') {
+    return Math.min(score, 50)
+  }
+
+  // specStatus === 'traced'
+  return score
 }
