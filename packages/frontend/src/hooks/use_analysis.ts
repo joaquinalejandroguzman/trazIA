@@ -131,7 +131,12 @@ export function useAnalysis() {
     [result]
   )
 
-  // Resetea el estado para analizar un nuevo repo
+  // Limpia solo el error sin tocar el análisis en curso ni el resultado
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  // Resetea el estado completo para analizar un nuevo repo
   const reset = useCallback(() => {
     setStatus('idle')
     setResult(null)
@@ -146,6 +151,7 @@ export function useAnalysis() {
     generatingSpec,
     analyzeRepo,
     generateSpec,
+    clearError,
     reset,
   }
 }

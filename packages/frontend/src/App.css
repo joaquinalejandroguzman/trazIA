@@ -99,7 +99,8 @@ html, body, #root {
 
 .repo-input--hero {
   justify-content: center;
-  min-height: 100vh;
+  /* min-height descontando el header para que el banner de error siempre quede visible */
+  min-height: calc(100vh - var(--header-height));
   padding: 40px 24px;
   background: var(--color-bg);
 }

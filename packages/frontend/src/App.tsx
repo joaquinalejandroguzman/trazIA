@@ -11,7 +11,7 @@ import './App.css'
 
 // Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
-  const { status, result, error, generatingSpec, analyzeRepo, generateSpec, reset } = useAnalysis()
+  const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
   const [selectedModule, setSelectedModule] = useState<ModuleNode | null>(null)
 
   const handleAnalyze = (repoUrl: string) => {
@@ -48,7 +48,7 @@ const App: React.FC = () => {
       {/* Banner de error si falla el análisis */}
       {error && (
         <div className="app__error-container">
-          <ErrorBanner message={error} onDismiss={reset} />
+          <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
 
