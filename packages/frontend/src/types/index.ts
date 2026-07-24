@@ -23,6 +23,10 @@ export interface ModuleNode {
   specStatus?: SpecStatus
   specHealthScore?: number
   specContent?: string
+  // Código fuente truncado (máx 4000 chars), presente tras análisis
+  sourceContent?: string
+  // Spec EARS generada on-demand, undefined hasta que se genera
+  earsSpec?: string
 }
 
 // Nodo de carpeta — agrupa archivos visualmente
@@ -75,11 +79,10 @@ export interface AnalysisResult {
   projectHealthScore: number  // score global de salud del proyecto (0-100)
 }
 
-// Respuesta del endpoint de generación de spec EARS
+// Respuesta del endpoint de generación de spec EARS (on-demand)
 export interface GenerateSpecResponse {
   moduleId: string
-  specContent: string
-  savedPath: string
+  earsSpec: string        // Markdown de la spec EARS generada
 }
 
 // Request para análisis

@@ -26,6 +26,7 @@ export const ZONE_COLORS: Record<ProjectZone, StatusColorSet> = {
 // Colores para integraciones (BD y APIs externas)
 export const INTEGRATION_COLORS: Record<IntegrationType, StatusColorSet> = {
   database:     { bg: '#e8f5e9', border: '#2e7d32', text: '#1b5e20' },  // verde oscuro
+  // eslint-disable-next-line camelcase
   external_api: { bg: '#fff3e0', border: '#ef6c00', text: '#e65100' },  // naranja
 }
 

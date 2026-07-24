@@ -6,6 +6,9 @@ import type { AnalysisResult, AnalysisStatus, ModuleNode, GenerateSpecResponse }
 // Activa datos mock cuando el backend no está disponible
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+// Timeout para la generación de spec on-demand (30 segundos)
+const GENERATE_SPEC_TIMEOUT_MS = 30_000
+
 // Simula un delay de red realista en modo mock
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -17,12 +20,14 @@ export function useAnalysis() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [generatingSpec, setGeneratingSpec] = useState<string | null>(null)
+  const [specErrorModules, setSpecErrorModules] = useState<Set<string>>(new Set())
 
   // Dispara el análisis completo del repo (pipeline: Analizador → Integraciones → Orquestador)
   const analyzeRepo = useCallback(async (repoUrl: string) => {
     setStatus('loading')
     setError(null)
     setResult(null)
+    setSpecErrorModules(new Set())
 
     // Modo mock: simula respuesta del backend con datos de ejemplo
     if (USE_MOCK) {
@@ -44,9 +49,25 @@ export function useAnalysis() {
     }
   }, [])
 
-  // Genera la spec EARS on-demand para un módulo sin trazabilidad
+  // Genera la spec EARS on-demand para un módulo individual
   const generateSpec = useCallback(
     async (moduleId: string): Promise<GenerateSpecResponse | null> => {
+      // Guard: módulo no encontrado en el resultado
+      if (!result) return null
+      const module = result.modules.find((m) => m.id === moduleId)
+      if (!module) return null
+
+      // Guard: cache hit — ya tiene earsSpec generada
+      if (module.earsSpec) {
+        return { moduleId, earsSpec: module.earsSpec }
+      }
+
+      // Guard: sourceContent vacío o undefined — no se puede generar
+      if (!module.sourceContent) return null
+
+      // Guard: módulo con error previo — bloqueado hasta que el usuario limpie el error
+      if (specErrorModules.has(moduleId)) return null
+
       setGeneratingSpec(moduleId)
 
       // Modo mock: genera spec de ejemplo con delay simulado
@@ -65,56 +86,51 @@ export function useAnalysis() {
 
         const mockResponse: GenerateSpecResponse = {
           moduleId,
-          specContent: mockSpec,
-          savedPath: `.kiro/specs/${moduleId.replace(/\//g, '_')}.md`,
+          earsSpec: mockSpec,
         }
 
-        if (result) {
-          const updatedModules: ModuleNode[] = result.modules.map((m) =>
-            m.id === moduleId
-              ? {
-                  ...m,
-                  specStatus: 'traced' as const,
-                  specHealthScore: 78,
-                  specContent: mockSpec,
-                }
-              : m
+        // Actualizar solo earsSpec del módulo, sin tocar specStatus ni specHealthScore
+        setResult((prev) => {
+          if (!prev) return prev
+          const updatedModules: ModuleNode[] = prev.modules.map((m) =>
+            m.id === moduleId ? { ...m, earsSpec: mockSpec } : m
           )
-          const newTracedCount = result.tracedCount + 1
-          const newUntracedCount = Math.max(0, result.untracedCount - 1)
-          setResult({
-            ...result,
-            modules: updatedModules,
-            tracedCount: newTracedCount,
-            untracedCount: newUntracedCount,
-            projectHealthScore: Math.round(
-              ((newTracedCount * 100 + result.driftCount * 60) / result.totalModules)
-            ),
-          })
-        }
+          return { ...prev, modules: updatedModules }
+        })
 
         setGeneratingSpec(null)
         return mockResponse
       }
 
-      try {
-        const response = await apiClient.post<GenerateSpecResponse>('/api/generate-spec', {
-          moduleId,
-          repoUrl: result?.repoUrl,
-        })
+      // Configurar AbortController con timeout de 30 segundos
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), GENERATE_SPEC_TIMEOUT_MS)
 
-        // Actualiza el módulo en el resultado local con la spec generada
-        if (result) {
-          const updatedModules: ModuleNode[] = result.modules.map((m) =>
-            m.id === moduleId
-              ? { ...m, specStatus: 'traced' as const, specContent: response.data.specContent }
-              : m
+      try {
+        const response = await apiClient.post<GenerateSpecResponse>(
+          '/api/generate-spec',
+          { moduleId, moduleName: module.name, sourceContent: module.sourceContent },
+          { signal: controller.signal, _skipRetry: true } as never
+        )
+
+        clearTimeout(timeoutId)
+
+        // Éxito: actualizar solo module.earsSpec, NO modificar specStatus ni specHealthScore
+        setResult((prev) => {
+          if (!prev) return prev
+          const updatedModules: ModuleNode[] = prev.modules.map((m) =>
+            m.id === moduleId ? { ...m, earsSpec: response.data.earsSpec } : m
           )
-          setResult({ ...result, modules: updatedModules })
-        }
+          return { ...prev, modules: updatedModules }
+        })
 
         return response.data
       } catch (err: unknown) {
+        clearTimeout(timeoutId)
+
+        // Agregar moduleId al set de errores (502, timeout, red)
+        setSpecErrorModules((prev) => new Set(prev).add(moduleId))
+
         const message =
           err instanceof Error ? err.message : 'Error al generar spec'
         setError(message)
@@ -123,10 +139,19 @@ export function useAnalysis() {
         setGeneratingSpec(null)
       }
     },
-    [result]
+    [result, specErrorModules]
   )
 
-  // Limpia solo el error sin tocar el análisis en curso ni el resultado
+  // Limpia el error de un módulo específico para permitir reintento manual
+  const clearSpecError = useCallback((moduleId: string) => {
+    setSpecErrorModules((prev) => {
+      const next = new Set(prev)
+      next.delete(moduleId)
+      return next
+    })
+  }, [])
+
+  // Limpia solo el error global sin tocar el análisis en curso ni el resultado
   const clearError = useCallback(() => {
     setError(null)
   }, [])
@@ -136,6 +161,7 @@ export function useAnalysis() {
     setStatus('idle')
     setResult(null)
     setError(null)
+    setSpecErrorModules(new Set())
   }, [])
 
   return {
@@ -143,8 +169,10 @@ export function useAnalysis() {
     result,
     error,
     generatingSpec,
+    specErrorModules,
     analyzeRepo,
     generateSpec,
+    clearSpecError,
     clearError,
     reset,
   }

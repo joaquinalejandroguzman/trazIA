@@ -431,7 +431,10 @@ function countLines(filePath: string): number {
  */
 function generateReadableName(relativePath: string): string {
   const parts = relativePath.split('/')
-  const lastPart = parts[parts.length - 1].replace(/\.[^.]+$/, '')
+  const filename = parts[parts.length - 1]
+  const stripped = filename.replace(/\.[^.]+$/, '')
+  // Dotfiles como ".editorconfig" quedan vacíos al quitar la "extensión": usar el nombre completo
+  const lastPart = stripped || filename
 
   if (parts.length > 1) {
     return `${parts[parts.length - 2]}/${lastPart}`

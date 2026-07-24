@@ -78,7 +78,13 @@ apiClient.interceptors.response.use(
       )
     }
 
-    const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number }
+    const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number; _skipRetry?: boolean }
+
+    // Si la request marcó _skipRetry, no reintentar — ir directo al error legible
+    if (config?._skipRetry) {
+      const readableMessage = getReadableErrorMessage(error)
+      return Promise.reject(new Error(readableMessage))
+    }
 
     // Retry para errores transitorios (solo si no superamos el límite)
     if (config && isRetryableError(error)) {

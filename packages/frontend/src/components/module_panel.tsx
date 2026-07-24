@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode } from '../types'
 import { getTraceabilityColor, getEffectiveScore } from '../constants/theme'
 import { countDirectChildren, formatChildLabel, getSortedSubfolders, truncateFolderName } from '../utils/folder_panel_helpers'
@@ -9,6 +9,9 @@ interface ModulePanelProps {
   onGenerateSpec: (moduleId: string) => Promise<void>
   generatingSpec: string | null
   specError: string | null
+  // Props para on-demand EARS spec
+  specErrorModules: Set<string>
+  clearSpecError: (moduleId: string) => void
   // Nuevas props para folder-panel-content
   allFolders?: FolderNode[]
   allModules?: ModuleNode[]
@@ -16,7 +19,20 @@ interface ModulePanelProps {
 }
 
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
-export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError, allFolders, allModules, onFolderNavigate }) => {
+export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError, specErrorModules, clearSpecError, allFolders, allModules, onFolderNavigate }) => {
+  // Auto-trigger: genera spec EARS on-demand al seleccionar un módulo sin spec
+  useEffect(() => {
+    if (!node || node.type !== 'module') return
+    const module = node as ModuleNode
+    // Guards: no disparar si ya tiene spec, si no hay sourceContent, si ya falló, o si ya está generando
+    if (module.earsSpec) return
+    if (!module.sourceContent) return
+    if (specErrorModules.has(module.id)) return
+    if (generatingSpec === module.id) return
+
+    onGenerateSpec(module.id)
+  }, [node?.id]) // keyeado SOLO al node.id — disparar una vez por selección de módulo
+
   if (!node) return null
 
   const isModule = node.type === 'module'
@@ -210,6 +226,106 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
                     >
                       {specError.length > 200 ? `${specError.slice(0, 200)}…` : specError}
                     </p>
+                  )}
+                </section>
+              )
+            })()}
+
+            {/* Sección de spec EARS on-demand */}
+            {(() => {
+              const module = node as ModuleNode
+              const isGenerating = generatingSpec === module.id
+              const hasSpec = !!module.earsSpec
+              const hasError = specErrorModules.has(module.id)
+              const noSource = !module.sourceContent
+
+              const handleRetry = () => {
+                clearSpecError(module.id)
+                onGenerateSpec(module.id)
+              }
+
+              return (
+                <section className="module-panel__section">
+                  <h3 className="module-panel__section-title">Spec EARS</h3>
+
+                  {/* Caso: sin sourceContent disponible */}
+                  {noSource && !hasSpec && (
+                    <p style={{ fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }}>
+                      No hay código fuente disponible para generar la spec
+                    </p>
+                  )}
+
+                  {/* Caso: generando spec (spinner) */}
+                  {isGenerating && !hasSpec && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        className="module-panel__spinner"
+                        style={{
+                          display: 'inline-block',
+                          width: 16,
+                          height: 16,
+                          border: '2px solid #e0e0e0',
+                          borderTop: '2px solid #1976d2',
+                          borderRadius: '50%',
+                          animation: 'spin 0.8s linear infinite',
+                        }}
+                      />
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>Generando spec...</span>
+                    </div>
+                  )}
+
+                  {/* Caso: error — mostrar mensaje truncado + botón Reintentar */}
+                  {hasError && !hasSpec && (
+                    <div>
+                      {specError && (
+                        <p
+                          style={{
+                            fontSize: '0.75rem',
+                            color: '#d32f2f',
+                            marginBottom: 8,
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {specError.length > 200 ? `${specError.slice(0, 200)}…` : specError}
+                        </p>
+                      )}
+                      <button
+                        className="module-panel__retry-btn"
+                        onClick={handleRetry}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 4,
+                          border: '1px solid #d32f2f',
+                          backgroundColor: 'transparent',
+                          color: '#d32f2f',
+                          fontSize: '0.8rem',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Caso: spec disponible (cache hit o recién generada) */}
+                  {hasSpec && (
+                    <pre
+                      style={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: '0.8rem',
+                        lineHeight: 1.5,
+                        backgroundColor: '#f5f5f5',
+                        padding: 12,
+                        borderRadius: 6,
+                        maxHeight: 400,
+                        overflow: 'auto',
+                        margin: 0,
+                      }}
+                    >
+                      {module.earsSpec}
+                    </pre>
                   )}
                 </section>
               )

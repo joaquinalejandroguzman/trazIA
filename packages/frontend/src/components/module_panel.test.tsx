@@ -1,7 +1,7 @@
 // Tests de property-based y unitarios para ModulePanel — Properties 5 y 6
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import React from 'react'
 import { ModulePanel } from './module_panel'
 import { getEffectiveScore } from '../constants/theme'
@@ -25,6 +25,8 @@ const defaultProps = {
   onGenerateSpec: async () => {},
   generatingSpec: null,
   specError: null,
+  specErrorModules: new Set<string>(),
+  clearSpecError: () => {},
 }
 
 // ============================================================

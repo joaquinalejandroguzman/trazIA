@@ -11,7 +11,7 @@ import './App.css'
 
 // Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
-  const { status, result, error, generatingSpec, analyzeRepo, generateSpec, clearError, reset } = useAnalysis()
+  const { status, result, error, generatingSpec, specErrorModules, analyzeRepo, generateSpec, clearSpecError, clearError, reset } = useAnalysis()
   // Guardamos el nodo seleccionado completo para poder mostrarlo en el panel
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   // Ref imperativa para controlar el centrado del grafo
@@ -100,6 +100,8 @@ const App: React.FC = () => {
             onGenerateSpec={handleGenerateSpec}
             generatingSpec={generatingSpec}
             specError={error}
+            specErrorModules={specErrorModules}
+            clearSpecError={clearSpecError}
             allFolders={result.folders}
             allModules={result.modules}
             onFolderNavigate={handleFolderNavigate}

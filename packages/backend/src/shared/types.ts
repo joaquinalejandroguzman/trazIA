@@ -34,9 +34,9 @@ export interface ModuleNode {
   // Nuevos campos obligatorios (post-Analyzer)
   specStatus: SpecStatus  // clasificación del módulo por Haiku
   specHealthScore: number // 0–100, clampado
-  // Campos temporales del pipeline — presentes en el pipeline, omitidos en la respuesta JSON final
-  sourceContent?: string  // contenido leído del archivo, truncado a 4000 chars si aplica
-  earsSpec?: string       // spec EARS generada por Sonnet
+  // Campos de contenido — incluidos en la respuesta JSON al frontend
+  sourceContent?: string  // contenido leído del archivo, truncado a 4000 chars — incluido en respuesta al frontend
+  earsSpec?: string       // spec EARS generada on-demand por Sonnet — vacío hasta que se genera
 }
 
 /**
