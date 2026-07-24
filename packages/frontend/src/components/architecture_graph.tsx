@@ -355,19 +355,31 @@ function buildLayoutNodes(
 }
 
 // Convierte las aristas del dominio en aristas de ReactFlow
-function buildEdges(edges: GraphEdge[]): Edge[] {
-  return edges.map((edge) => ({
-    id: `${edge.source}→${edge.target}`,
-    source: edge.source,
-    target: edge.target,
-    type: 'smoothstep',
-    style: {
-      stroke: edge.type === 'integration' ? '#ef6c00' : '#90a4ae',
-      strokeWidth: edge.type === 'integration' ? 2 : 1.2,
-      strokeDasharray: edge.type === 'integration' ? '5,5' : undefined,
-    },
-    animated: edge.type === 'integration',
-  }))
+// Si hay un nodo seleccionado, resalta las aristas conectadas a él
+function buildEdges(edges: GraphEdge[], selectedNodeId?: string | null): Edge[] {
+  return edges.map((edge) => {
+    const isConnected = selectedNodeId
+      ? edge.source === selectedNodeId || edge.target === selectedNodeId
+      : false
+
+    return {
+      id: `${edge.source}→${edge.target}`,
+      source: edge.source,
+      target: edge.target,
+      type: 'simplebezier',
+      style: {
+        stroke: isConnected
+          ? '#4f8ef7'
+          : edge.type === 'integration' ? '#ef6c00' : '#90a4ae',
+        strokeWidth: isConnected ? 3 : (edge.type === 'integration' ? 2 : 1.2),
+        strokeDasharray: edge.type === 'integration' && !isConnected ? '5,5' : undefined,
+        opacity: selectedNodeId && !isConnected ? 0.25 : 1,
+        transition: 'stroke 200ms, stroke-width 200ms, opacity 200ms',
+      },
+      animated: isConnected || edge.type === 'integration',
+      zIndex: isConnected ? 1 : -1,
+    }
+  })
 }
 
 // Contenido interno del grafo (con forwardRef para exponer fitToNode)
@@ -394,7 +406,7 @@ const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphPro
       () => buildLayoutNodes(modules, folders, integrations, selectedNodeId),
       [modules, folders, integrations, selectedNodeId]
     )
-    const flowEdges = useMemo(() => buildEdges(edges), [edges])
+    const flowEdges = useMemo(() => buildEdges(edges, selectedNodeId), [edges, selectedNodeId])
 
     // Mapeo inverso para recuperar el nodo cuando se hace click
     const nodeById = useMemo(() => {
