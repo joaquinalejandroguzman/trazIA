@@ -4,6 +4,7 @@
 
 import http from "http";
 import express, { Express } from "express";
+import cors from "cors";
 import { healthRouter } from "./routes/health";
 import analyzeRouter from "./routes/analyze";
 import generateSpecRouter from "./routes/generate_spec";
@@ -11,6 +12,7 @@ import generateSpecRouter from "./routes/generate_spec";
 // Crear y configurar la aplicación Express
 const app: Express = express();
 
+app.use(cors());
 app.use(express.json());
 
 // Montar rutas
