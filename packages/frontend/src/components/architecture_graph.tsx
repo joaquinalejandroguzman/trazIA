@@ -12,6 +12,15 @@ import {
 import '@xyflow/react/dist/style.css'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode, GraphEdge } from '../types'
 import { ZONE_COLORS, INTEGRATION_COLORS, getFileIcon, detectZone, getTraceabilityColor, getEffectiveScore } from '../constants/theme'
+import { computeFolderDepth, getHierarchyFontSize } from '../utils/folder_hierarchy'
+
+// Custom node para carpetas con título jerárquico visible
+function FolderGroupNode({ data }: { data: Record<string, unknown> }) {
+  return <>{data.label}</>
+}
+
+// Registro de nodeTypes (estable, fuera del render para evitar re-renders)
+const nodeTypes = { folderGroup: FolderGroupNode }
 
 // Dimensiones
 const FILE_NODE_WIDTH = 170
@@ -73,6 +82,9 @@ function buildLayoutNodes(
       rootFolders.push(folder)
     }
   }
+
+  // Mapa de carpetas para calcular profundidad jerárquica
+  const foldersMap = new Map<string, FolderNode>(folders.map(f => [f.id, f]))
 
   // Calcular tamaño de cada carpeta basado en sus hijos
   const folderSizes = new Map<string, { width: number; height: number }>()
@@ -156,6 +168,8 @@ function buildLayoutNodes(
     const zone = detectZone(folder.path)
     const colors = ZONE_COLORS[zone]
     const isSelected = folder.id === selectedId
+    const depth = computeFolderDepth(folder.id, foldersMap)
+    const hierarchyFontSize = getHierarchyFontSize(depth)
 
     nodes.push({
       id: folder.id,
@@ -164,18 +178,26 @@ function buildLayoutNodes(
         label: (
           <div style={{
             position: 'absolute',
-            top: 8,
-            left: 12,
+            top: 0,
+            left: 0,
+            right: 0,
+            height: FOLDER_PADDING_Y,
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 4,
+            overflow: 'hidden',
           }}>
-            <span style={{ fontSize: '0.85rem' }}>📁</span>
+            <span style={{ fontSize: hierarchyFontSize, lineHeight: 1 }}>📁</span>
             <span style={{
               fontWeight: 700,
-              fontSize: '0.75rem',
+              fontSize: hierarchyFontSize,
               color: colors.text,
-              opacity: 0.8,
+              opacity: 0.9,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: `calc(100% - 2rem)`,
             }}>
               {folder.name}
             </span>
@@ -190,7 +212,9 @@ function buildLayoutNodes(
         borderRadius: 12,
         padding: 0,
       },
-      type: 'group',
+      type: 'folderGroup',
+      draggable: false,
+      selectable: true,
       ...(folder.parentFolder ? { parentId: folder.parentFolder, extent: 'parent' as const } : {}),
     })
   }
@@ -222,17 +246,16 @@ function buildLayoutNodes(
     // Nombre corto: solo el nombre del archivo
     const shortName = mod.path.split('/').pop() ?? mod.name
 
-    // Indicador de trazabilidad: solo cuando specStatus o specHealthScore están definidos
-    const hasTraceability = mod.specStatus !== undefined || mod.specHealthScore !== undefined
-    const effectiveScore = hasTraceability ? getEffectiveScore(mod.specStatus, mod.specHealthScore) : 0
-    const traceabilityColor = hasTraceability ? getTraceabilityColor(effectiveScore) : null
+    // Indicador de trazabilidad: siempre visible — sin datos = score 0 (rojo)
+    const effectiveScore = getEffectiveScore(mod.specStatus, mod.specHealthScore)
+    const traceabilityColor = getTraceabilityColor(effectiveScore)
 
     nodes.push({
       id: mod.id,
       position,
       data: {
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px', position: 'relative' }}>
             <span style={{ fontSize: '0.75rem', flexShrink: 0 }}>{icon}</span>
             <span style={{
               fontSize: '0.68rem',
@@ -244,21 +267,18 @@ function buildLayoutNodes(
             }}>
               {shortName}
             </span>
-            {/* Indicador circular de trazabilidad */}
-            {traceabilityColor && (
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  backgroundColor: traceabilityColor,
-                  flexShrink: 0,
-                  marginLeft: 'auto',
-                  transition: 'background-color 300ms',
-                }}
-                aria-label={`Trazabilidad: ${effectiveScore}%`}
-              />
-            )}
+            {/* Indicador circular de trazabilidad — siempre visible */}
+            <span
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                backgroundColor: traceabilityColor,
+                border: '1.5px solid #000000ff',
+                transition: 'background-color 300ms',
+              }}
+              aria-label={`Trazabilidad: ${effectiveScore}%`}
+            />
           </div>
         ),
       },
@@ -273,7 +293,9 @@ function buildLayoutNodes(
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
+        overflow: 'visible',
       },
+      draggable: false,
       ...(mod.parentFolder ? { parentId: mod.parentFolder, extent: 'parent' as const } : {}),
     })
   }
@@ -314,6 +336,7 @@ function buildLayoutNodes(
         boxShadow: isSelected ? '0 0 0 2px rgba(0,0,0,0.2)' : undefined,
         cursor: 'pointer',
       },
+      draggable: false,
     })
   })
 
@@ -370,6 +393,7 @@ const GraphContent: React.FC<ArchitectureGraphProps> = ({
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
+        nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         fitView
         fitViewOptions={{ padding: 0.15 }}
