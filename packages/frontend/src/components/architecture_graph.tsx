@@ -12,6 +12,15 @@ import {
 import '@xyflow/react/dist/style.css'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode, GraphEdge } from '../types'
 import { ZONE_COLORS, INTEGRATION_COLORS, getFileIcon, detectZone, getTraceabilityColor, getEffectiveScore } from '../constants/theme'
+import { computeFolderDepth, getHierarchyFontSize } from '../utils/folder_hierarchy'
+
+// Custom node para carpetas con título jerárquico visible
+function FolderGroupNode({ data }: { data: Record<string, unknown> }) {
+  return <>{data.label}</>
+}
+
+// Registro de nodeTypes (estable, fuera del render para evitar re-renders)
+const nodeTypes = { folderGroup: FolderGroupNode }
 
 // Dimensiones
 const FILE_NODE_WIDTH = 170
@@ -73,6 +82,9 @@ function buildLayoutNodes(
       rootFolders.push(folder)
     }
   }
+
+  // Mapa de carpetas para calcular profundidad jerárquica
+  const foldersMap = new Map<string, FolderNode>(folders.map(f => [f.id, f]))
 
   // Calcular tamaño de cada carpeta basado en sus hijos
   const folderSizes = new Map<string, { width: number; height: number }>()
@@ -156,6 +168,8 @@ function buildLayoutNodes(
     const zone = detectZone(folder.path)
     const colors = ZONE_COLORS[zone]
     const isSelected = folder.id === selectedId
+    const depth = computeFolderDepth(folder.id, foldersMap)
+    const hierarchyFontSize = getHierarchyFontSize(depth)
 
     nodes.push({
       id: folder.id,
@@ -164,18 +178,26 @@ function buildLayoutNodes(
         label: (
           <div style={{
             position: 'absolute',
-            top: 8,
-            left: 12,
+            top: 0,
+            left: 0,
+            right: 0,
+            height: FOLDER_PADDING_Y,
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 4,
+            overflow: 'hidden',
           }}>
-            <span style={{ fontSize: '0.85rem' }}>📁</span>
+            <span style={{ fontSize: hierarchyFontSize, lineHeight: 1 }}>📁</span>
             <span style={{
               fontWeight: 700,
-              fontSize: '0.75rem',
+              fontSize: hierarchyFontSize,
               color: colors.text,
-              opacity: 0.8,
+              opacity: 0.9,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: `calc(100% - 2rem)`,
             }}>
               {folder.name}
             </span>
@@ -190,7 +212,7 @@ function buildLayoutNodes(
         borderRadius: 12,
         padding: 0,
       },
-      type: 'group',
+      type: 'folderGroup',
       draggable: false,
       selectable: true,
       ...(folder.parentFolder ? { parentId: folder.parentFolder, extent: 'parent' as const } : {}),
@@ -371,6 +393,7 @@ const GraphContent: React.FC<ArchitectureGraphProps> = ({
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
+        nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         fitView
         fitViewOptions={{ padding: 0.15 }}
