@@ -91,7 +91,7 @@ router.post('/analyze', async (req: Request, res: Response) => {
   } finally {
     // Limpiar repo clonado del disco temporal
     if (clonedPath) {
-      cleanupClonedRepo(clonedPath)
+      await cleanupClonedRepo(clonedPath)
     }
   }
 })

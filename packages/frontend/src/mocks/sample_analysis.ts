@@ -30,6 +30,8 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
       ],
       linesOfCode: 45,
       lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      specStatus: 'traced',
+      specHealthScore: 85,
     },
 
     // ============ Rutas ============
@@ -42,6 +44,8 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
       dependencies: ['src/services/product_service.ts'],
       linesOfCode: 62,
       lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      specStatus: 'traced',
+      specHealthScore: 92,
     },
     {
       id: 'src/routes/orders.ts',
@@ -52,6 +56,8 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
       dependencies: ['src/services/order_service.ts', 'src/services/payment_service.ts'],
       linesOfCode: 88,
       lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      specStatus: 'drift',
+      specHealthScore: 45,
     },
     {
       id: 'src/routes/auth.ts',
@@ -62,6 +68,8 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
       dependencies: ['src/services/auth_service.ts'],
       linesOfCode: 54,
       lastModified: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      specStatus: 'traced',
+      specHealthScore: 78,
     },
 
     // ============ Servicios ============
@@ -74,6 +82,8 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
       dependencies: ['src/db/connection.ts'],
       linesOfCode: 120,
       lastModified: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      specStatus: 'drift',
+      specHealthScore: 60,
     },
     {
       id: 'src/services/order_service.ts',
@@ -84,6 +94,8 @@ export const SAMPLE_ANALYSIS: AnalysisResult = {
       dependencies: ['src/db/connection.ts', 'src/services/notification_service.ts'],
       linesOfCode: 145,
       lastModified: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString(),
+      specStatus: 'traced',
+      specHealthScore: 71,
     },
     {
       id: 'src/services/payment_service.ts',
