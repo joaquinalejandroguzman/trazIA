@@ -4,6 +4,7 @@ import { cloneRepository, cleanupClonedRepo } from '../services/git_cloner'
 import { analyzeRepository } from '../agents/analyzer/analyzer'
 import { detectRepositoryIntegrations } from '../agents/integrations/integrations'
 import { buildAnalysisResult } from '../agents/orchestrator/orchestrator'
+import { generateEarsSpecs } from '../agents/ears_writer'
 
 const router = Router()
 
@@ -58,8 +59,17 @@ router.post('/analyze', async (req: Request, res: Response) => {
       mensaje: `Integraciones detectadas: ${integrations.length}`,
     }))
 
-    // Paso 4: Orquestar — combinar estructura + integraciones en el grafo final
-    const result: AnalysisResult = buildAnalysisResult(repoUrl.trim(), modules, integrations)
+    // Paso 4: Generar specs EARS para cada módulo
+    const modulesWithSpecs = await generateEarsSpecs(modules)
+
+    console.log(JSON.stringify({
+      agente: 'analyze-route',
+      módulo: 'ears-writer',
+      mensaje: `Specs EARS generadas para ${modulesWithSpecs.length} módulos`,
+    }))
+
+    // Paso 5: Orquestar — combinar estructura + integraciones en el grafo final
+    const result: AnalysisResult = buildAnalysisResult(repoUrl.trim(), modulesWithSpecs, integrations)
 
     console.log(JSON.stringify({
       agente: 'analyze-route',
@@ -78,6 +88,10 @@ router.post('/analyze', async (req: Request, res: Response) => {
     }))
 
     // Detectar errores específicos para retornar códigos HTTP apropiados
+    if (message.includes('Variable de entorno requerida no definida')) {
+      res.status(503).json({ error: `Servicio de IA no disponible: ${message}` })
+      return
+    }
     if (message.includes('no encontrado') || message.includes('not found')) {
       res.status(404).json({ error: message })
       return

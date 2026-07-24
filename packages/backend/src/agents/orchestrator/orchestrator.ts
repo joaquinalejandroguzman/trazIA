@@ -212,6 +212,11 @@ export function buildAnalysisResult(
   // Detectar lenguaje/stack predominante
   const primaryLanguage = detectPrimaryLanguage(modules)
 
+  // Calcular projectHealthScore: promedio aritmético de specHealthScore, redondeado a entero
+  const projectHealthScore = modules.length === 0
+    ? 0
+    : Math.round(modules.reduce((sum, m) => sum + m.specHealthScore, 0) / modules.length)
+
   return {
     repoUrl,
     analyzedAt: new Date().toISOString(),
@@ -222,5 +227,6 @@ export function buildAnalysisResult(
     totalModules: modules.length,
     totalIntegrations: integrations.length,
     primaryLanguage,
+    projectHealthScore,
   }
 }

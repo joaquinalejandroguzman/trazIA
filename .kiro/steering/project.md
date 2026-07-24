@@ -54,10 +54,12 @@ El núcleo del producto no es solo el árbol de carpetas — eso ya lo muestra c
 - **Backend:** Node.js / TypeScript
 - **Frontend:** React + react-flow (grafo interactivo)
 - **Agentes:** AWS Lambda (una función por agente)
-- **IA:** AWS Bedrock en `sa-east-1` (São Paulo), vía AnthropicBedrockMantle
-  (`@anthropic-ai/bedrock-sdk`) — `anthropic.claude-haiku-4-5` (Analizador),
-  `anthropic.claude-sonnet-4-6` (Agente de Integraciones). IDs y región por
-  variable de entorno, nunca hardcodeados.
+- **IA:** AWS Bedrock en `sa-east-1` (São Paulo), vía cliente `AnthropicBedrock`
+  (`@anthropic-ai/bedrock-sdk`) — `global.anthropic.claude-haiku-4-5-20251001-v1:0`
+  (Analizador), `global.anthropic.claude-sonnet-4-6` (Redactor EARS). Los IDs son
+  inference profiles (prefijo `global.`), requeridos por estos modelos en Bedrock.
+  IDs y región por variable de entorno, nunca hardcodeados. Reintentar con backoff
+  ante errores transitorios de cold start.
 - **Persistencia:** DynamoDB (caché de escaneos ya realizados, para no re-analizar el mismo repo en cada visita), S3 (hosting frontend)
 
 ## Estructura del proyecto

@@ -12,6 +12,14 @@ export type NodeType = 'module' | 'folder' | 'database' | 'external_api'
 export type IntegrationType = 'database' | 'external_api'
 
 /**
+ * Estado de spec de un módulo — clasificado por el Agente Analizador via Haiku
+ * - traced: el módulo tiene una spec EARS generada y actualizada
+ * - drift: el módulo tiene spec pero hay divergencia respecto al código actual
+ * - untraced: el módulo no tiene spec o no pudo clasificarse
+ */
+export type SpecStatus = 'traced' | 'drift' | 'untraced'
+
+/**
  * Nodo de módulo en el grafo de arquitectura — representa un archivo/módulo del proyecto
  */
 export interface ModuleNode {
@@ -23,6 +31,12 @@ export interface ModuleNode {
   parentFolder?: string   // id de la carpeta padre (para agrupación visual)
   linesOfCode?: number    // líneas de código (opcional)
   lastModified?: string   // ISO date string de última modificación (opcional)
+  // Nuevos campos obligatorios (post-Analyzer)
+  specStatus: SpecStatus  // clasificación del módulo por Haiku
+  specHealthScore: number // 0–100, clampado
+  // Campos temporales del pipeline — presentes en el pipeline, omitidos en la respuesta JSON final
+  sourceContent?: string  // contenido leído del archivo, truncado a 4000 chars si aplica
+  earsSpec?: string       // spec EARS generada por Sonnet
 }
 
 /**
@@ -75,6 +89,7 @@ export interface AnalysisResult {
   totalModules: number
   totalIntegrations: number       // BD + APIs externas detectadas
   primaryLanguage: string         // lenguaje/stack predominante detectado
+  projectHealthScore: number      // promedio aritmético de specHealthScore, entero 0–100
 }
 
 /**

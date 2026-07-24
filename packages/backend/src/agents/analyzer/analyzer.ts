@@ -1,7 +1,9 @@
 import fs from 'fs'
 import path from 'path'
-import type { ModuleNode } from '../../shared/types'
+import type { ModuleNode, SpecStatus } from '../../shared/types'
 import { scanAllFiles, canParseImports, getFileLanguage } from '../../shared/file_scanner'
+import { bedrockClient, BEDROCK_MODEL_ANALYZER } from '../../clients/bedrock_client'
+import { withLlmRetry } from '../../shared/llm_retry'
 
 // Nota: el Analizador mapea TODOS los archivos relevantes del proyecto como nodos.
 // Extrae aristas de dependencia (imports) en todos los lenguajes soportados.
@@ -133,12 +135,7 @@ function extractRawImports(filePath: string, content: string): string[] {
       break
     case 'html':
       // Solo extraer script src y link href (no img/video/audio que son assets)
-      patterns = [
-        /<script[^>]+src=["']([^"']+)["']/g,
-        /<link[^>]+href=["']([^"']+\.css[^"']*)["']/g,
-        /import\s+(?:[\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g,
-        /require\(['"]([^'"]+)['"]\)/g,
-      ]
+      patterns = HTML_IMPORT_PATTERNS
       break
     default:
       return []
@@ -441,6 +438,77 @@ function generateReadableName(relativePath: string): string {
   return lastPart
 }
 
+// ============================================================
+// Clasificación con Haiku (specStatus + specHealthScore)
+// ============================================================
+
+interface HaikuClassification {
+  specStatus: SpecStatus
+  specHealthScore: number
+}
+
+/**
+ * Clasifica un módulo usando Claude Haiku vía AWS Bedrock.
+ * Retorna defaults si la respuesta no es JSON parseable o si falla permanentemente.
+ */
+async function classifyModuleWithHaiku(
+  module: ModuleNode,
+  sourceContent: string
+): Promise<HaikuClassification> {
+  const defaults: HaikuClassification = { specStatus: 'untraced', specHealthScore: 0 }
+
+  try {
+    const prompt = `Eres un analizador de código. Dado el siguiente fragmento de código fuente, determina:
+1. specStatus: si el módulo tiene una especificación actualizada ("traced"), desincronizada ("drift") o sin especificación ("untraced").
+2. specHealthScore: un entero del 0 al 100 que refleja la calidad y cobertura de la spec.
+
+Responde ÚNICAMENTE con JSON válido en este formato:
+{"specStatus": "traced"|"drift"|"untraced", "specHealthScore": <número 0-100>}
+
+Código del módulo (${module.name}):
+${sourceContent}`
+
+    const response = await withLlmRetry(
+      () =>
+        bedrockClient.messages.create({
+          model: BEDROCK_MODEL_ANALYZER,
+          // eslint-disable-next-line camelcase
+          max_tokens: 256,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      { agente: 'analyzer', módulo: module.id }
+    )
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+
+    try {
+      const parsed = JSON.parse(text) as { specStatus?: unknown; specHealthScore?: unknown }
+      const status = parsed.specStatus
+      const score = parsed.specHealthScore
+
+      const validStatuses: SpecStatus[] = ['traced', 'drift', 'untraced']
+      const resolvedStatus: SpecStatus =
+        typeof status === 'string' && validStatuses.includes(status as SpecStatus)
+          ? (status as SpecStatus)
+          : 'untraced'
+
+      const rawScore = typeof score === 'number' ? score : Number(score)
+      const resolvedScore = isNaN(rawScore)
+        ? 0
+        : Math.max(0, Math.min(100, Math.round(rawScore)))
+
+      return { specStatus: resolvedStatus, specHealthScore: resolvedScore }
+    } catch {
+      // Parse fallido — retornar defaults
+      return defaults
+    }
+  } catch (error) {
+    // Fallo permanente tras reintentos
+    console.error(JSON.stringify({ agente: 'analyzer', módulo: module.id, error: String(error) }))
+    return defaults
+  }
+}
+
 /**
  * Analiza un repositorio completo y extrae la estructura de módulos y dependencias.
  * Incluye TODOS los archivos relevantes como nodos del grafo.
@@ -460,19 +528,21 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
   const modules: ModuleNode[] = files.map((filePath) => {
     const relativePath = path.relative(repoPath, filePath).replace(/\\/g, '/')
 
+    // Leer contenido del archivo y truncar a 4000 chars si supera ese límite
+    let sourceContent = ''
+    try {
+      const rawContent = fs.readFileSync(filePath, 'utf-8')
+      sourceContent = rawContent.slice(0, 4000)
+    } catch {
+      // No crítico, se deja vacío
+    }
+
     // Extraer imports si el lenguaje está soportado
     let dependencies: string[] = []
     if (canParseImports(filePath)) {
-      let content: string
-      try {
-        content = fs.readFileSync(filePath, 'utf-8')
-      } catch {
-        content = ''
-      }
-
-      if (content) {
+      if (sourceContent) {
         const lang = getFileLanguage(filePath)
-        const rawImports = extractRawImports(filePath, content)
+        const rawImports = extractRawImports(filePath, sourceContent)
 
         // Filtrar solo imports locales y resolverlos contra archivos reales
         const resolved = new Set<string>()
@@ -508,7 +578,24 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
       dependencies,
       linesOfCode: countLines(filePath),
       lastModified,
+      sourceContent,  // almacenar contenido truncado
+      // Valores por defecto — se sobreescribirán tras clasificación con Haiku
+      specStatus: 'untraced' as const,
+      specHealthScore: 0,
     }
+  })
+
+  // Clasificar todos los módulos en paralelo con Haiku
+  const classifications = await Promise.all(
+    modules.map((module) =>
+      classifyModuleWithHaiku(module, module.sourceContent || '')
+    )
+  )
+
+  // Aplicar clasificaciones a los módulos
+  modules.forEach((module, index) => {
+    module.specStatus = classifications[index].specStatus
+    module.specHealthScore = classifications[index].specHealthScore
   })
 
   return modules

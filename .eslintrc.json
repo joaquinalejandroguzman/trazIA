@@ -8,6 +8,7 @@
   ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "camelcase": ["error", { "properties": "always" }],
     "@typescript-eslint/naming-convention": [
       "error",
@@ -22,7 +23,7 @@
       {
         "selector": "variable",
         "modifiers": ["const", "global"],
-        "format": ["UPPER_SNAKE_CASE", "camelCase", "PascalCase"]
+        "format": ["UPPER_CASE", "camelCase", "PascalCase"]
       }
     ]
   },
