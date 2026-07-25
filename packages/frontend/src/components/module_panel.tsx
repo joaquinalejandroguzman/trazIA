@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faClone, faDownload, faCheck } from '@fortawesome/free-solid-svg-icons'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode } from '../types'
 import { getTraceabilityColor, getEffectiveScore } from '../constants/theme'
 import { countDirectChildren, formatChildLabel, getSortedSubfolders, truncateFolderName } from '../utils/folder_panel_helpers'
@@ -20,6 +22,8 @@ interface ModulePanelProps {
 
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
 export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError, specErrorModules, clearSpecError, allFolders, allModules, onFolderNavigate }) => {
+  const [copied, setCopied] = useState(false)
+
   // Auto-trigger: genera spec EARS on-demand al seleccionar un módulo sin spec
   useEffect(() => {
     if (!node || node.type !== 'module') return
@@ -244,9 +248,65 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
                 onGenerateSpec(module.id)
               }
 
+              // Copiar spec al portapapeles
+              const handleCopy = async () => {
+                if (!module.earsSpec) return
+                try {
+                  await navigator.clipboard.writeText(module.earsSpec)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                } catch {
+                  // Fallback para navegadores sin clipboard API
+                  const textarea = document.createElement('textarea')
+                  textarea.value = module.earsSpec
+                  document.body.appendChild(textarea)
+                  textarea.select()
+                  document.execCommand('copy')
+                  document.body.removeChild(textarea)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }
+              }
+
+              // Descargar spec como .md
+              const handleDownload = () => {
+                if (!module.earsSpec) return
+                const blob = new Blob([module.earsSpec], { type: 'text/markdown' })
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = `${module.name.replace(/\.[^.]+$/, '')}_spec.md`
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(url)
+              }
+
               return (
                 <section className="module-panel__section">
-                  <h3 className="module-panel__section-title">Spec EARS</h3>
+                  <div className="module-panel__spec-header">
+                    <h3 className="module-panel__section-title">Spec EARS</h3>
+                    {hasSpec && (
+                      <div className="module-panel__spec-actions">
+                        <button
+                          className="module-panel__spec-action-btn"
+                          onClick={handleCopy}
+                          title={copied ? 'Copiado' : 'Copiar spec'}
+                          aria-label={copied ? 'Copiado' : 'Copiar spec al portapapeles'}
+                        >
+                          {copied ? <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faClone} />}
+                        </button>
+                        <button
+                          className="module-panel__spec-action-btn"
+                          onClick={handleDownload}
+                          title="Descargar como .md"
+                          aria-label="Descargar spec como archivo markdown"
+                        >
+                          <FontAwesomeIcon icon={faDownload} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Caso: sin sourceContent disponible */}
                   {noSource && !hasSpec && (
@@ -310,21 +370,7 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
 
                   {/* Caso: spec disponible (cache hit o recién generada) */}
                   {hasSpec && (
-                    <pre
-                      style={{
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        fontSize: '0.8rem',
-                        lineHeight: 1.5,
-                        color: '#1a1a1a',
-                        backgroundColor: '#f5f5f5',
-                        padding: 12,
-                        borderRadius: 6,
-                        maxHeight: 400,
-                        overflow: 'auto',
-                        margin: 0,
-                      }}
-                    >
+                    <pre className="module-panel__spec-content">
                       {module.earsSpec}
                     </pre>
                   )}

@@ -1,9 +1,12 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faClone, faDownload, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { getTraceabilityColor, getEffectiveScore } from '../constants/theme';
 import { countDirectChildren, formatChildLabel, getSortedSubfolders, truncateFolderName } from '../utils/folder_panel_helpers';
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
 export const ModulePanel = ({ node, onClose, onGenerateSpec, generatingSpec, specError, specErrorModules, clearSpecError, allFolders, allModules, onFolderNavigate }) => {
+    const [copied, setCopied] = useState(false);
     // Auto-trigger: genera spec EARS on-demand al seleccionar un módulo sin spec
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
@@ -98,7 +101,7 @@ export const ModulePanel = ({ node, onClose, onGenerateSpec, generatingSpec, spe
                                     clearSpecError(module.id);
                                     onGenerateSpec(module.id);
                                 };
-                                return (_jsxs("section", { className: "module-panel__section", children: [_jsx("h3", { className: "module-panel__section-title", children: "Spec EARS" }), noSource && !hasSpec && (_jsx("p", { style: { fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }, children: "No hay c\u00F3digo fuente disponible para generar la spec" })), isGenerating && !hasSpec && (_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx("span", { className: "module-panel__spinner", style: {
+                                return (_jsxs("section", { className: "module-panel__section", children: [_jsxs("div", { className: "module-panel__spec-header", children: [_jsx("h3", { className: "module-panel__section-title", children: "Spec EARS" }), hasSpec && _jsxs("div", { className: "module-panel__spec-actions", children: [_jsx("button", { className: "module-panel__spec-action-btn", onClick: async () => { try { await navigator.clipboard.writeText(module.earsSpec); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { } }, title: copied ? 'Copiado' : 'Copiar spec', "aria-label": copied ? 'Copiado' : 'Copiar spec al portapapeles', children: copied ? _jsx(FontAwesomeIcon, { icon: faCheck }) : _jsx(FontAwesomeIcon, { icon: faClone }) }), _jsx("button", { className: "module-panel__spec-action-btn", onClick: () => { const blob = new Blob([module.earsSpec], { type: 'text/markdown' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${module.name.replace(/\.[^.]+$/, '')}_spec.md`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url); }, title: "Descargar como .md", "aria-label": "Descargar spec como archivo markdown", children: _jsx(FontAwesomeIcon, { icon: faDownload }) })] })] }), noSource && !hasSpec && (_jsx("p", { style: { fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }, children: "No hay c\u00F3digo fuente disponible para generar la spec" })), isGenerating && !hasSpec && (_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx("span", { className: "module-panel__spinner", style: {
                                                         display: 'inline-block',
                                                         width: 16,
                                                         height: 16,
@@ -120,18 +123,7 @@ export const ModulePanel = ({ node, onClose, onGenerateSpec, generatingSpec, spe
                                                         fontSize: '0.8rem',
                                                         fontWeight: 500,
                                                         cursor: 'pointer',
-                                                    }, children: "Reintentar" })] })), hasSpec && (_jsx("pre", { style: {
-                                                whiteSpace: 'pre-wrap',
-                                                wordBreak: 'break-word',
-                                                fontSize: '0.8rem',
-                                                lineHeight: 1.5,
-                                                backgroundColor: '#f5f5f5',
-                                                padding: 12,
-                                                borderRadius: 6,
-                                                maxHeight: 400,
-                                                overflow: 'auto',
-                                                margin: 0,
-                                            }, children: module.earsSpec }))] }));
+                                                    }, children: "Reintentar" })] })), hasSpec && (_jsx("pre", { className: "module-panel__spec-content", children: module.earsSpec }))] }));
                             })()] })), isFolder && (_jsxs(_Fragment, { children: [_jsxs("section", { className: "module-panel__section", children: [_jsx("h3", { className: "module-panel__section-title", children: "Ruta" }), _jsx("p", { className: "module-panel__code", children: node.path })] }), _jsxs("section", { className: "module-panel__section", children: [_jsx("h3", { className: "module-panel__section-title", children: "Contenido" }), (() => {
                                         const counts = countDirectChildren(node.id, allFolders ?? [], allModules ?? []);
                                         return (_jsxs(_Fragment, { children: [_jsx("p", { className: "module-panel__text", children: formatChildLabel(counts.folders, 'folder') }), _jsx("p", { className: "module-panel__text", children: formatChildLabel(counts.files, 'file') })] }));
