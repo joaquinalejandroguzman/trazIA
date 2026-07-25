@@ -26,6 +26,24 @@ const IGNORED_DIRS = new Set([
   '.idea', '.vscode',
   // Migraciones de ORM (generadas automáticamente, no reflejan arquitectura)
   'migrations', 'migrate',
+  // Assets / recursos estáticos (no representan arquitectura)
+  'assets', 'static', 'images', 'icons', 'fonts', 'media',
+  'img', 'pictures', 'illustrations',
+  // Librerías vendored / copiadas
+  'lib', 'third_party', 'third-party', 'external', 'libs',
+  // Estilos puros (sin lógica de negocio)
+  'styles', 'css', 'scss', 'themes',
+  // Fixtures / mocks / snapshots de testing
+  '__fixtures__', '__mocks__', '__snapshots__', 'fixtures',
+  'mocks', 'testdata', 'test-data',
+  // Documentación
+  'docs', 'doc', 'wiki', '.github',
+  // Storybook / demos / ejemplos
+  '.storybook', 'stories', '__stories__', 'examples', 'demo',
+  // Internacionalización / traducciones
+  'locales', 'i18n', 'translations', 'lang',
+  // Scripts de CI / infra
+  'scripts', '.circleci', '.husky',
   // Proyecto propio
   '.kiro',
 ])
@@ -48,6 +66,16 @@ const EXCLUDED_EXTENSIONS = new Set([
   '.map',
   // Lockfiles (se excluyen por nombre abajo, pero por si acaso)
   '.lock',
+  // Snapshots de testing
+  '.snap',
+  // Patches / diffs
+  '.patch', '.diff',
+  // Logs
+  '.log',
+  // Data dumps
+  '.csv', '.tsv',
+  // XML (config/build en la mayoría de proyectos, no arquitectura)
+  '.xml',
 ])
 
 // Archivos específicos por nombre que no aportan a la arquitectura
@@ -57,6 +85,20 @@ const EXCLUDED_FILENAMES = new Set([
   '.DS_Store', 'Thumbs.db', '.gitkeep', '.gitattributes', '.gitignore',
   'LICENSE', 'LICENSE.md', 'LICENSE.txt',
   '__init__.py',    // Python: marcador de paquete, no contiene lógica arquitectónica
+  // Manifiestos / meta de frontend
+  'manifest.json', 'robots.txt', 'sitemap.xml', 'browserconfig.xml',
+  // Config de herramientas de desarrollo (no es arquitectura)
+  '.browserslistrc', '.babelrc', '.postcssrc',
+  'babel.config.js', 'babel.config.cjs', 'babel.config.json',
+  'postcss.config.js', 'postcss.config.cjs', 'postcss.config.mjs',
+  'tailwind.config.js', 'tailwind.config.ts', 'tailwind.config.cjs',
+  'webpack.config.js', 'webpack.config.ts', 'webpack.config.cjs',
+  'rollup.config.js', 'rollup.config.ts', 'rollup.config.mjs',
+  'vite.config.js', 'vite.config.ts', 'vite.config.mjs',
+  'vitest.config.ts', 'vitest.config.js',
+  'jest.config.js', 'jest.config.ts', 'jest.config.cjs',
+  '.stylelintrc', '.stylelintrc.json',
+  'tsconfig.build.json', 'tsconfig.node.json',
 ])
 
 // Patrones de nombre de archivo que indican basura/generados
