@@ -520,6 +520,79 @@ export function parseHaikuClassification(raw: string): HaikuClassification {
 }
 
 /**
+ * Clasifica un módulo usando heurísticas (sin LLM).
+ * Revisa existencia de tests, configs, docs y kiro specs para inferir el estado.
+ */
+function classifyByHeuristic(
+  relativePath: string,
+  allFileIds: Set<string>,
+  readmeContent: string
+): { specStatus: SpecStatus; specHealthScore: number } {
+  const baseName = relativePath.replace(/\.[^.]+$/, '')
+  const fileName = relativePath.split('/').pop() ?? ''
+  const ext = fileName.includes('.') ? '.' + fileName.split('.').pop()?.toLowerCase() : ''
+
+  // 1. Archivos que no necesitan spec → na (gris)
+  const naExtensions = ['.json', '.css', '.scss', '.less', '.html', '.htm',
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2',
+    '.ttf', '.eot', '.map', '.lock', '.env', '.editorconfig']
+  if (naExtensions.includes(ext)) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 2. Config files → na (gris)
+  const configPatterns = [
+    'package.json', 'tsconfig.json', '.eslintrc', '.eslintrc.json',
+    '.eslintrc.js', '.prettierrc', '.prettierrc.json', 'jest.config',
+    'vitest.config', 'vite.config', '.gitignore', '.env.example',
+    'Dockerfile', 'docker-compose', 'Makefile', 'cdk.json',
+    '.editorconfig', '.prettierignore', '.eslintignore',
+  ]
+  if (configPatterns.some((p) => fileName.startsWith(p) || fileName === p)) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 3. Archivos de documentación → na (gris)
+  if (/^(README|CHANGELOG|LICENSE|CONTRIBUTING|SECURITY|CODE_OF_CONDUCT)/i.test(fileName)) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 4. Directorio .kiro/ → na (gris, son configs del proyecto)
+  if (relativePath.startsWith('.kiro/')) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 5. Test/spec files → traced (alguien los escribió, hay cobertura)
+  if (/\.(test|spec)\.[^.]+$/.test(fileName) || /\.test\.[^.]+$/.test(fileName)) {
+    return { specStatus: 'traced', specHealthScore: 85 }
+  }
+
+  // 6. Existe un test/spec para este módulo → traced
+  const testExtensions = ['.test.ts', '.test.tsx', '.test.js', '.test.jsx',
+    '.spec.ts', '.spec.tsx', '.spec.js', '.spec.jsx']
+  const hasTest = testExtensions.some((ext) => allFileIds.has(baseName + ext))
+  if (hasTest) {
+    return { specStatus: 'traced', specHealthScore: 80 }
+  }
+
+  // 7. Está en .kiro/specs/ o tiene un requirements.md asociado → traced
+  if (relativePath.startsWith('.kiro/specs/') || relativePath.includes('requirements.md')) {
+    return { specStatus: 'traced', specHealthScore: 90 }
+  }
+
+  // 8. El README lo menciona explícitamente → drift (tiene docs pero no spec formal)
+  if (readmeContent.length > 0) {
+    const moduleBaseName = baseName.split('/').pop() ?? ''
+    if (moduleBaseName.length > 3 && readmeContent.toLowerCase().includes(moduleBaseName.toLowerCase())) {
+      return { specStatus: 'drift', specHealthScore: 40 }
+    }
+  }
+
+  // 9. Default → untraced (código sin spec ni documentación)
+  return { specStatus: 'untraced', specHealthScore: 0 }
+}
+
+/**
  * Analiza un repositorio completo y extrae la estructura de módulos y dependencias.
  * Incluye TODOS los archivos relevantes como nodos del grafo.
  * Extrae aristas de dependencia en todos los lenguajes soportados.
@@ -533,6 +606,20 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
 
   // Construir set de IDs (rutas relativas) para resolver dependencias
   const fileIds = new Set(files.map((f) => path.relative(repoPath, f).replace(/\\/g, '/')))
+
+  // Leer README si existe (para heurísticas de documentación)
+  let readmeContent = ''
+  try {
+    const readmePath = files.find((f) => {
+      const name = path.basename(f).toUpperCase()
+      return name === 'README.MD' || name === 'README.TXT' || name === 'README'
+    })
+    if (readmePath) {
+      readmeContent = fs.readFileSync(readmePath, 'utf-8')
+    }
+  } catch {
+    // No crítico
+  }
 
   // Para cada archivo, construir el ModuleNode
   const modules: ModuleNode[] = files.map((filePath) => {
@@ -580,6 +667,9 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
       // No crítico
     }
 
+    // Clasificar por heurísticas (sin LLM, instantáneo)
+    const heuristic = classifyByHeuristic(relativePath, fileIds, readmeContent)
+
     return {
       id: relativePath,
       name,
@@ -589,14 +679,10 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
       linesOfCode: countLines(filePath),
       lastModified,
       sourceContent,  // almacenar contenido truncado
-      // Valores por defecto — se sobreescribirán tras clasificación con Haiku
-      specStatus: 'untraced' as const,
-      specHealthScore: 0,
+      specStatus: heuristic.specStatus,
+      specHealthScore: heuristic.specHealthScore,
     }
   })
 
-  // La clasificación (specStatus/specHealthScore) se realiza on-demand vía el endpoint
-  // POST /api/classify-module cuando el usuario hace click en un nodo del grafo.
-  // Todos los módulos arrancan con los valores por defecto ya asignados arriba.
   return modules
 }
