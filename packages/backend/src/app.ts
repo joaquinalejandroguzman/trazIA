@@ -10,6 +10,7 @@ import { healthRouter } from "./routes/health";
 import analyzeRouter from "./routes/analyze";
 import generateSpecRouter from "./routes/generate_spec";
 import classifyModuleRouter from "./routes/classify_module";
+import chatRouter from "./routes/chat";
 
 // Crear y configurar la aplicación Express
 const app: Express = express();
@@ -22,6 +23,7 @@ app.use("/", healthRouter);
 app.use("/api", analyzeRouter);
 app.use("/api", generateSpecRouter);
 app.use("/api", classifyModuleRouter);
+app.use("/api", chatRouter);
 
 // Función para arrancar el servidor en un puerto dado
 function startServer(port: number): http.Server {

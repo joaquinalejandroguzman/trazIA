@@ -5,6 +5,7 @@ import { ProjectSummary } from './components/project_summary'
 import { ArchitectureGraph, type ArchitectureGraphRef } from './components/architecture_graph'
 import { GraphLegend } from './components/graph_legend'
 import { ModulePanel } from './components/module_panel'
+import { ChatPanel } from './components/chat_panel'
 import { ErrorBanner } from './components/error_banner'
 import type { GraphNode } from './types'
 import './App.css'
@@ -73,40 +74,50 @@ const App: React.FC = () => {
 
       {/* Dashboard completo: summary + grafo + panel */}
       {showDashboard && (
-        <main className="app__main">
-          {/* Columna izquierda: resumen del proyecto y leyenda */}
-          <aside className="app__sidebar">
-            <ProjectSummary result={result} />
-            <GraphLegend />
-          </aside>
+        <>
+          <main className="app__main">
+            {/* Columna izquierda: resumen del proyecto y leyenda */}
+            <aside className="app__sidebar">
+              <ProjectSummary result={result} />
+              <GraphLegend />
+            </aside>
 
-          {/* Columna central: grafo interactivo */}
-          <section className="app__graph-container">
-            <ArchitectureGraph
-              ref={graphRef}
-              modules={result.modules}
-              folders={result.folders}
-              integrations={result.integrations}
-              edges={result.edges}
-              onNodeClick={handleNodeClick}
-              selectedNodeId={selectedNode?.id}
+            {/* Columna central: grafo interactivo */}
+            <section className="app__graph-container">
+              <ArchitectureGraph
+                ref={graphRef}
+                modules={result.modules}
+                folders={result.folders}
+                integrations={result.integrations}
+                edges={result.edges}
+                onNodeClick={handleNodeClick}
+                selectedNodeId={selectedNode?.id}
+              />
+            </section>
+
+            {/* Panel lateral derecho: detalles del nodo seleccionado */}
+            <ModulePanel
+              node={selectedNode}
+              onClose={handleClosePanel}
+              onGenerateSpec={handleGenerateSpec}
+              generatingSpec={generatingSpec}
+              specError={error}
+              specErrorModules={specErrorModules}
+              clearSpecError={clearSpecError}
+              allFolders={result.folders}
+              allModules={result.modules}
+              onFolderNavigate={handleFolderNavigate}
             />
-          </section>
+          </main>
 
-          {/* Panel lateral derecho: detalles del nodo seleccionado */}
-          <ModulePanel
-            node={selectedNode}
-            onClose={handleClosePanel}
-            onGenerateSpec={handleGenerateSpec}
-            generatingSpec={generatingSpec}
-            specError={error}
-            specErrorModules={specErrorModules}
-            clearSpecError={clearSpecError}
-            allFolders={result.folders}
-            allModules={result.modules}
-            onFolderNavigate={handleFolderNavigate}
+          {/* Chat contextual — posición fija, coexiste con el panel de spec */}
+          <ChatPanel
+            modules={result.modules}
+            readme={undefined}
+            isSpecPanelOpen={selectedNode !== null}
+            specPanelWidth={400}
           />
-        </main>
+        </>
       )}
     </div>
   )
