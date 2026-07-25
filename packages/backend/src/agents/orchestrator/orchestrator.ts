@@ -212,6 +212,11 @@ export function buildAnalysisResult(
   // Detectar lenguaje/stack predominante
   const primaryLanguage = detectPrimaryLanguage(modules)
 
+  // Calcular conteos por estado de trazabilidad
+  const tracedCount = modules.filter((m) => m.specStatus === 'traced').length
+  const driftCount = modules.filter((m) => m.specStatus === 'drift').length
+  const untracedCount = modules.filter((m) => m.specStatus === 'untraced').length
+
   // Calcular projectHealthScore: promedio aritmético de specHealthScore, redondeado a entero
   const projectHealthScore = modules.length === 0
     ? 0
@@ -227,6 +232,9 @@ export function buildAnalysisResult(
     totalModules: modules.length,
     totalIntegrations: integrations.length,
     primaryLanguage,
+    tracedCount,
+    untracedCount,
+    driftCount,
     projectHealthScore,
   }
 }

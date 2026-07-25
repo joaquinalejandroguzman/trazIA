@@ -4,8 +4,6 @@ import type { ModuleNode, SpecStatus } from '../../shared/types'
 import { scanAllFiles, canParseImports, getFileLanguage } from '../../shared/file_scanner'
 // bedrockClient, withLlmRetry y limitedMap se usan en classify_module.ts (endpoint on-demand)
 // El analizador solo hace análisis estático: no llama a Bedrock.
-import { bedrockClient, BEDROCK_MODEL_ANALYZER } from '../../clients/bedrock_client'
-import { withLlmRetry } from '../../shared/llm_retry'
 
 // Nota: el Analizador mapea TODOS los archivos relevantes del proyecto como nodos.
 // Extrae aristas de dependencia (imports) en todos los lenguajes soportados.
@@ -519,49 +517,6 @@ export function parseHaikuClassification(raw: string): HaikuClassification {
   const resolvedScore = Math.max(0, Math.min(100, specHealthScore))
 
   return { specStatus: resolvedStatus, specHealthScore: resolvedScore }
-}
-
-/**
- * Clasifica un módulo usando Claude Haiku vía AWS Bedrock.
- * Retorna defaults si la respuesta no es JSON parseable o si falla permanentemente.
- */
-async function classifyModuleWithHaiku(
-  module: ModuleNode,
-  sourceContent: string
-): Promise<HaikuClassification> {
-  const defaults: HaikuClassification = { specStatus: 'untraced', specHealthScore: 0 }
-
-  try {
-    const prompt = `Eres un analizador de código. Dado el siguiente fragmento de código fuente, determina:
-1. specStatus: si el módulo tiene una especificación actualizada ("traced"), desincronizada ("drift") o sin especificación ("untraced").
-2. specHealthScore: un entero del 0 al 100 que refleja la calidad y cobertura de la spec.
-
-Responde ÚNICAMENTE con JSON válido en este formato:
-{"specStatus": "traced"|"drift"|"untraced", "specHealthScore": <número 0-100>}
-
-Código del módulo (${module.name}):
-${sourceContent}`
-
-    const response = await withLlmRetry(
-      () =>
-        bedrockClient.messages.create({
-          model: BEDROCK_MODEL_ANALYZER,
-          // eslint-disable-next-line camelcase
-          max_tokens: 256,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      { agente: 'analyzer', módulo: module.id }
-    )
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
-
-    // Parseo robusto: soporta fences Markdown, prosa circundante, clamp y defaults
-    return parseHaikuClassification(text)
-  } catch (error) {
-    // Fallo permanente tras reintentos
-    console.error(JSON.stringify({ agente: 'analyzer', módulo: module.id, error: String(error) }))
-    return defaults
-  }
 }
 
 /**

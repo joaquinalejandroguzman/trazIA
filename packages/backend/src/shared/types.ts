@@ -89,6 +89,9 @@ export interface AnalysisResult {
   totalModules: number
   totalIntegrations: number       // BD + APIs externas detectadas
   primaryLanguage: string         // lenguaje/stack predominante detectado
+  tracedCount: number             // módulos con spec generada (specStatus === 'traced')
+  untracedCount: number           // módulos sin spec (specStatus === 'untraced')
+  driftCount: number              // módulos con spec desactualizada (specStatus === 'drift')
   projectHealthScore: number      // promedio aritmético de specHealthScore, entero 0–100
 }
 
