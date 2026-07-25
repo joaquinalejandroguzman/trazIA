@@ -530,24 +530,44 @@ function classifyByHeuristic(
 ): { specStatus: SpecStatus; specHealthScore: number } {
   const baseName = relativePath.replace(/\.[^.]+$/, '')
   const fileName = relativePath.split('/').pop() ?? ''
+  const ext = fileName.includes('.') ? '.' + fileName.split('.').pop()?.toLowerCase() : ''
 
-  // 1. Config files → untraced (no necesitan spec)
+  // 1. Archivos que no necesitan spec → na (gris)
+  const naExtensions = ['.json', '.css', '.scss', '.less', '.html', '.htm',
+    '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2',
+    '.ttf', '.eot', '.map', '.lock', '.env', '.editorconfig']
+  if (naExtensions.includes(ext)) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 2. Config files → na (gris)
   const configPatterns = [
     'package.json', 'tsconfig.json', '.eslintrc', '.eslintrc.json',
     '.eslintrc.js', '.prettierrc', '.prettierrc.json', 'jest.config',
     'vitest.config', 'vite.config', '.gitignore', '.env.example',
     'Dockerfile', 'docker-compose', 'Makefile', 'cdk.json',
+    '.editorconfig', '.prettierignore', '.eslintignore',
   ]
   if (configPatterns.some((p) => fileName.startsWith(p) || fileName === p)) {
-    return { specStatus: 'untraced', specHealthScore: 0 }
+    return { specStatus: 'na', specHealthScore: 0 }
   }
 
-  // 2. Test/spec files → traced (alguien los escribió, hay cobertura)
+  // 3. Archivos de documentación → na (gris)
+  if (/^(README|CHANGELOG|LICENSE|CONTRIBUTING|SECURITY|CODE_OF_CONDUCT)/i.test(fileName)) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 4. Directorio .kiro/ → na (gris, son configs del proyecto)
+  if (relativePath.startsWith('.kiro/')) {
+    return { specStatus: 'na', specHealthScore: 0 }
+  }
+
+  // 5. Test/spec files → traced (alguien los escribió, hay cobertura)
   if (/\.(test|spec)\.[^.]+$/.test(fileName) || /\.test\.[^.]+$/.test(fileName)) {
     return { specStatus: 'traced', specHealthScore: 85 }
   }
 
-  // 3. Existe un test/spec para este módulo → traced
+  // 6. Existe un test/spec para este módulo → traced
   const testExtensions = ['.test.ts', '.test.tsx', '.test.js', '.test.jsx',
     '.spec.ts', '.spec.tsx', '.spec.js', '.spec.jsx']
   const hasTest = testExtensions.some((ext) => allFileIds.has(baseName + ext))
@@ -555,17 +575,12 @@ function classifyByHeuristic(
     return { specStatus: 'traced', specHealthScore: 80 }
   }
 
-  // 4. Está en .kiro/specs/ o tiene un requirements.md asociado → traced
+  // 7. Está en .kiro/specs/ o tiene un requirements.md asociado → traced
   if (relativePath.startsWith('.kiro/specs/') || relativePath.includes('requirements.md')) {
     return { specStatus: 'traced', specHealthScore: 90 }
   }
 
-  // 5. Es un archivo de documentación → untraced (no necesita spec)
-  if (/^(README|CHANGELOG|LICENSE|CONTRIBUTING|SECURITY)/i.test(fileName)) {
-    return { specStatus: 'untraced', specHealthScore: 0 }
-  }
-
-  // 6. El README lo menciona explícitamente → drift (tiene docs pero no spec formal)
+  // 8. El README lo menciona explícitamente → drift (tiene docs pero no spec formal)
   if (readmeContent.length > 0) {
     const moduleBaseName = baseName.split('/').pop() ?? ''
     if (moduleBaseName.length > 3 && readmeContent.toLowerCase().includes(moduleBaseName.toLowerCase())) {
@@ -573,7 +588,7 @@ function classifyByHeuristic(
     }
   }
 
-  // 7. Default → untraced
+  // 9. Default → untraced (código sin spec ni documentación)
   return { specStatus: 'untraced', specHealthScore: 0 }
 }
 

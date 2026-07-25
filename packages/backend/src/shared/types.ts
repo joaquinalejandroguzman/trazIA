@@ -12,12 +12,13 @@ export type NodeType = 'module' | 'folder' | 'database' | 'external_api'
 export type IntegrationType = 'database' | 'external_api'
 
 /**
- * Estado de spec de un módulo — clasificado por el Agente Analizador via Haiku
+ * Estado de spec de un módulo — clasificado por heurísticas o por Haiku (on-demand)
  * - traced: el módulo tiene una spec EARS generada y actualizada
  * - drift: el módulo tiene spec pero hay divergencia respecto al código actual
  * - untraced: el módulo no tiene spec o no pudo clasificarse
+ * - na: no aplica — archivo de config, estilo o documentación que no necesita spec
  */
-export type SpecStatus = 'traced' | 'drift' | 'untraced'
+export type SpecStatus = 'traced' | 'drift' | 'untraced' | 'na'
 
 /**
  * Nodo de módulo en el grafo de arquitectura — representa un archivo/módulo del proyecto
