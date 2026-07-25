@@ -2,9 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import type { ModuleNode, SpecStatus } from '../../shared/types'
 import { scanAllFiles, canParseImports, getFileLanguage } from '../../shared/file_scanner'
+// bedrockClient, withLlmRetry y limitedMap se usan en classify_module.ts (endpoint on-demand)
+// El analizador solo hace análisis estático: no llama a Bedrock.
 import { bedrockClient, BEDROCK_MODEL_ANALYZER } from '../../clients/bedrock_client'
 import { withLlmRetry } from '../../shared/llm_retry'
-import { limitedMap } from '../../shared/concurrency_limiter'
 
 // Nota: el Analizador mapea TODOS los archivos relevantes del proyecto como nodos.
 // Extrae aristas de dependencia (imports) en todos los lenguajes soportados.
@@ -639,18 +640,8 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
     }
   })
 
-  // Clasificar todos los módulos con concurrencia limitada vía Haiku
-  const classifications = await limitedMap(
-    modules,
-    (module) => classifyModuleWithHaiku(module, module.sourceContent || ''),
-    () => ({ specStatus: 'untraced' as const, specHealthScore: 0 })
-  ) as HaikuClassification[]
-
-  // Aplicar clasificaciones a los módulos
-  modules.forEach((module, index) => {
-    module.specStatus = classifications[index].specStatus
-    module.specHealthScore = classifications[index].specHealthScore
-  })
-
+  // La clasificación (specStatus/specHealthScore) se realiza on-demand vía el endpoint
+  // POST /api/classify-module cuando el usuario hace click en un nodo del grafo.
+  // Todos los módulos arrancan con los valores por defecto ya asignados arriba.
   return modules
 }

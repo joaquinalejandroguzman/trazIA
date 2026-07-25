@@ -316,6 +316,7 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
                         wordBreak: 'break-word',
                         fontSize: '0.8rem',
                         lineHeight: 1.5,
+                        color: '#1a1a1a',
                         backgroundColor: '#f5f5f5',
                         padding: 12,
                         borderRadius: 6,
