@@ -66,6 +66,6 @@ export async function cleanupClonedRepo(repoPath: string): Promise<void> {
     }
   } catch {
     // No es crítico si falla la limpieza — el OS limpiará /tmp eventualmente
-    console.warn(`[TrazIA] No se pudo limpiar repo temporal: ${repoPath}`)
+    console.warn(JSON.stringify({ agente: 'git-cloner', módulo: 'cleanup', mensaje: 'No se pudo limpiar repo temporal', repoPath }))
   }
 }

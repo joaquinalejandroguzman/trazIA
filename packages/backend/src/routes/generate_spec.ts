@@ -41,7 +41,7 @@ router.post('/generate-spec', async (req: Request, res: Response) => {
     res.status(200).json({ moduleId, earsSpec: resultado })
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : String(error)
-    console.error('Error interno al generar spec:', { agente: 'generate-spec', módulo: req.body?.moduleName, error: mensaje })
+    console.error(JSON.stringify({ agente: 'generate-spec', módulo: req.body?.moduleName, error: mensaje }))
     res.status(500).json({ error: 'Error interno al generar spec' })
   }
 })
