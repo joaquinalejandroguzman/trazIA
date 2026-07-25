@@ -89,3 +89,25 @@ export interface GenerateSpecResponse {
 export interface AnalyzeRequest {
   repoUrl: string
 }
+
+// --- Tipos del Chat Contextual ---
+
+// Mensaje individual del chat (usuario o asistente)
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+// Request para el endpoint POST /api/chat
+export interface ChatRequest {
+  message: string
+  modules: ModuleNode[]
+  readme?: string
+  sessionId?: string
+}
+
+// Response del endpoint POST /api/chat
+export interface ChatResponse {
+  reply: string
+  sessionId: string
+}
