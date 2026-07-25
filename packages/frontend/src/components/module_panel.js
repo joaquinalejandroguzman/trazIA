@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClone, faDownload, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { getTraceabilityColor, getEffectiveScore } from '../constants/theme';
@@ -7,25 +7,6 @@ import { countDirectChildren, formatChildLabel, getSortedSubfolders, truncateFol
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
 export const ModulePanel = ({ node, onClose, onGenerateSpec, generatingSpec, specError, specErrorModules, clearSpecError, allFolders, allModules, onFolderNavigate }) => {
     const [copied, setCopied] = useState(false);
-    // Auto-trigger: genera spec EARS on-demand al seleccionar un módulo sin spec
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => {
-        if (!node || node.type !== 'module')
-            return;
-        const module = node;
-        // Guards: no disparar si ya tiene spec, si no hay sourceContent, si ya falló, si ya está generando, o si no aplica
-        if (module.earsSpec)
-            return;
-        if (!module.sourceContent)
-            return;
-        if (module.specStatus === 'na')
-            return;
-        if (specErrorModules.has(module.id))
-            return;
-        if (generatingSpec === module.id)
-            return;
-        onGenerateSpec(module.id);
-    }, [node?.id]); // keyeado SOLO al node.id — disparar una vez por selección de módulo
     if (!node)
         return null;
     const isModule = node.type === 'module';
