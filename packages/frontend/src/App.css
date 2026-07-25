@@ -456,6 +456,9 @@ html, body, #root {
   opacity: 0;
   pointer-events: none;
   transition: width var(--transition), opacity var(--transition);
+  /* z-index 1002: prioridad visual sobre ChatPanel (1001) y FAB (1000) */
+  position: relative;
+  z-index: 1002;
 }
 
 .module-panel--open {
