@@ -109,6 +109,31 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
             {(() => {
               const module = node as ModuleNode
               const specStatus = module.specStatus
+
+              // Early return: módulos con specStatus 'na' no necesitan trazabilidad
+              if (specStatus === 'na') {
+                return (
+                  <section className="module-panel__section">
+                    <h3 className="module-panel__section-title">Trazabilidad</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>No aplica trazabilidad</span>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          color: '#fff',
+                          backgroundColor: '#adb5bd',
+                        }}
+                      >
+                        N/A
+                      </span>
+                    </div>
+                  </section>
+                )
+              }
+
               const specHealthScore = module.specHealthScore
               const effectiveScore = getEffectiveScore(specStatus, specHealthScore)
               const traceabilityColor = getTraceabilityColor(effectiveScore)
@@ -226,7 +251,7 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
             })()}
 
             {/* Sección de spec EARS on-demand */}
-            {(() => {
+            {(node as ModuleNode).specStatus !== 'na' && (() => {
               const module = node as ModuleNode
               const isGenerating = generatingSpec === module.id
               const hasSpec = !!module.earsSpec

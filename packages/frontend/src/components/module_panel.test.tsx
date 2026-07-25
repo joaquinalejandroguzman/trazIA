@@ -123,6 +123,67 @@ describe('Property 6: Score display and progress bar accuracy', () => {
 })
 
 // ============================================================
+// Property 1: Bug Condition — Panel NA renderiza barra de progreso
+// y sección Spec EARS incorrectamente
+// Validates: Requirements 1.1, 1.2, 1.3, 2.1, 2.2, 2.3
+// ============================================================
+describe('Property 1 (Bug Condition): Panel NA muestra solo texto informativo', () => {
+  it('para módulos con specStatus "na", el panel muestra "No aplica trazabilidad", badge "N/A", sin barra de progreso ni sección "Spec EARS"', () => {
+    // Generadores: specHealthScore arbitrario (0-100), earsSpec y sourceContent opcionales
+    const specHealthScoreArb = fc.oneof(
+      fc.constant(undefined as number | undefined),
+      fc.integer({ min: 0, max: 100 })
+    )
+    const earsSpecArb = fc.oneof(
+      fc.constant(undefined as string | undefined),
+      fc.string({ minLength: 1, maxLength: 200 })
+    )
+    const sourceContentArb = fc.oneof(
+      fc.constant(undefined as string | undefined),
+      fc.string({ minLength: 1, maxLength: 500 })
+    )
+
+    fc.assert(
+      fc.property(specHealthScoreArb, earsSpecArb, sourceContentArb, (specHealthScore, earsSpec, sourceContent) => {
+        const module = createTestModule({
+          specStatus: 'na',
+          specHealthScore,
+          earsSpec,
+          sourceContent,
+        })
+
+        const { container, queryByText, unmount } = render(
+          <ModulePanel node={module} {...defaultProps} />
+        )
+
+        // Assert: "No aplica trazabilidad" es visible
+        expect(queryByText('No aplica trazabilidad')).not.toBeNull()
+
+        // Assert: badge "N/A" está presente (ya se renderiza con el texto 'N/A')
+        expect(container.textContent).toContain('N/A')
+
+        // Assert: NO hay barra de progreso (div con height 8px y borderRadius 4px como contenedor)
+        const allDivs = container.querySelectorAll('div')
+        let hasProgressBar = false
+        allDivs.forEach((el) => {
+          const style = (el as HTMLElement).style
+          if (style.height === '8px' && style.borderRadius === '4px') {
+            hasProgressBar = true
+          }
+        })
+        expect(hasProgressBar).toBe(false)
+
+        // Assert: NO se muestra la sección "Spec EARS"
+        expect(queryByText('Spec EARS')).toBeNull()
+
+        unmount()
+      }),
+      { numRuns: 100 }
+    )
+  })
+})
+
+// ============================================================
 // Tests unitarios (example-based)
 // ============================================================
 describe('ModulePanel — badges de estado', () => {
@@ -176,5 +237,100 @@ describe('ModulePanel — indicador solo en módulos', () => {
     const { container, unmount } = render(<ModulePanel node={folderNode} {...defaultProps} />)
     expect(container.textContent).not.toContain('Trazabilidad')
     unmount()
+  })
+})
+
+// ============================================================
+// Property 2: Preservation — Comportamiento intacto para specStatus !== 'na'
+// Validates: Requirements 3.1, 3.2, 3.3, 3.4
+// ============================================================
+
+describe('Property 2: Preservation — progress bar and Spec EARS section present for non-NA modules', () => {
+  // Arbitrary para specStatus excluyendo 'na'
+  const nonNaSpecStatusArb = fc.oneof(
+    fc.constant('traced' as SpecStatus),
+    fc.constant('untraced' as SpecStatus),
+    fc.constant('drift' as SpecStatus)
+  )
+
+  const scoreArb = fc.integer({ min: 0, max: 100 })
+
+  const earsSpecArb = fc.oneof(
+    fc.constant(undefined as string | undefined),
+    fc.string({ minLength: 1, maxLength: 200 })
+  )
+
+  it('para todo módulo con specStatus !== "na", renderiza barra de progreso y sección "Spec EARS"', () => {
+    fc.assert(
+      fc.property(nonNaSpecStatusArb, scoreArb, earsSpecArb, (specStatus, specHealthScore, earsSpec) => {
+        const module = createTestModule({ specStatus, specHealthScore, earsSpec })
+        const { container, unmount } = render(
+          <ModulePanel node={module} {...defaultProps} />
+        )
+
+        // Verificar presencia de la barra de progreso (contenedor con height: 8px, borderRadius: 4px)
+        const allDivs = container.querySelectorAll('div[style]')
+        let hasProgressBar = false
+        allDivs.forEach((el) => {
+          const style = (el as HTMLElement).style
+          if (style.height === '8px' && style.borderRadius === '4px') {
+            hasProgressBar = true
+          }
+        })
+        expect(hasProgressBar).toBe(true)
+
+        // Verificar presencia del título "Spec EARS"
+        expect(container.textContent).toContain('Spec EARS')
+
+        unmount()
+      }),
+      { numRuns: 100 }
+    )
+  })
+
+  it('para todo módulo con specStatus === "traced", el texto del score muestra el valor de specHealthScore', () => {
+    fc.assert(
+      fc.property(scoreArb, earsSpecArb, (specHealthScore, earsSpec) => {
+        const module = createTestModule({ specStatus: 'traced', specHealthScore, earsSpec })
+        const { container, unmount } = render(
+          <ModulePanel node={module} {...defaultProps} />
+        )
+
+        // El score se muestra como Math.floor(specHealthScore)%
+        const expectedText = `${Math.floor(specHealthScore)}%`
+        expect(container.textContent).toContain(expectedText)
+
+        unmount()
+      }),
+      { numRuns: 100 }
+    )
+  })
+
+  it('badges correctos por specStatus: Trazado/Sin spec/Drift', () => {
+    const badgeMapping: Array<{ status: SpecStatus; expectedBadge: string }> = [
+      { status: 'traced', expectedBadge: 'Trazado' },
+      { status: 'untraced', expectedBadge: 'Sin spec' },
+      { status: 'drift', expectedBadge: 'Drift' },
+    ]
+
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 2 }),
+        scoreArb,
+        earsSpecArb,
+        (statusIdx, specHealthScore, earsSpec) => {
+          const { status, expectedBadge } = badgeMapping[statusIdx]
+          const module = createTestModule({ specStatus: status, specHealthScore, earsSpec })
+          const { container, unmount } = render(
+            <ModulePanel node={module} {...defaultProps} />
+          )
+
+          expect(container.textContent).toContain(expectedBadge)
+
+          unmount()
+        }
+      ),
+      { numRuns: 100 }
+    )
   })
 })
