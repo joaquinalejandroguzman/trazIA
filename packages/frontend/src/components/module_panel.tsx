@@ -28,9 +28,10 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
   useEffect(() => {
     if (!node || node.type !== 'module') return
     const module = node as ModuleNode
-    // Guards: no disparar si ya tiene spec, si no hay sourceContent, si ya falló, o si ya está generando
+    // Guards: no disparar si ya tiene spec, si no hay sourceContent, si ya falló, si ya está generando, o si no aplica
     if (module.earsSpec) return
     if (!module.sourceContent) return
+    if (module.specStatus === 'na') return
     if (specErrorModules.has(module.id)) return
     if (generatingSpec === module.id) return
 
@@ -132,14 +133,17 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
               // Badge de estado: texto y color según specStatus
               const badgeText = specStatus === 'traced' ? 'Trazado'
                 : specStatus === 'drift' ? 'Drift'
+                : specStatus === 'na' ? 'N/A'
                 : 'Sin spec'
               const badgeColor = specStatus === 'traced' ? '#43a047'
                 : specStatus === 'drift' ? '#fdd835'
+                : specStatus === 'na' ? '#adb5bd'
                 : '#e53935'
 
               // Botón condicional según la zona efectiva
+              // specStatus 'na': no mostrar botón (no necesita spec)
               // Zona roja (0–33): "Generar Spec", zona amarilla (34–66): "Mejorar Spec", zona verde (67–100) + traced: sin botón
-              const showButton = !(specStatus === 'traced' && effectiveScore >= 67)
+              const showButton = specStatus !== 'na' && !(specStatus === 'traced' && effectiveScore >= 67)
               const buttonLabel = effectiveScore <= 33 ? 'Generar Spec' : 'Mejorar Spec'
 
               return (

@@ -59,7 +59,7 @@ export interface GraphEdge {
 }
 
 // Estado de trazabilidad de un módulo
-export type SpecStatus = 'traced' | 'untraced' | 'drift'
+export type SpecStatus = 'traced' | 'untraced' | 'drift' | 'na'
 
 // Respuesta completa del pipeline de análisis (Orquestador)
 export interface AnalysisResult {

@@ -13,10 +13,12 @@ export const ModulePanel = ({ node, onClose, onGenerateSpec, generatingSpec, spe
         if (!node || node.type !== 'module')
             return;
         const module = node;
-        // Guards: no disparar si ya tiene spec, si no hay sourceContent, si ya falló, o si ya está generando
+        // Guards: no disparar si ya tiene spec, si no hay sourceContent, si ya falló, si ya está generando, o si no aplica
         if (module.earsSpec)
             return;
         if (!module.sourceContent)
+            return;
+        if (module.specStatus === 'na')
             return;
         if (specErrorModules.has(module.id))
             return;
@@ -45,13 +47,15 @@ export const ModulePanel = ({ node, onClose, onGenerateSpec, generatingSpec, spe
                                 // Badge de estado: texto y color según specStatus
                                 const badgeText = specStatus === 'traced' ? 'Trazado'
                                     : specStatus === 'drift' ? 'Drift'
+                                    : specStatus === 'na' ? 'N/A'
                                         : 'Sin spec';
                                 const badgeColor = specStatus === 'traced' ? '#43a047'
                                     : specStatus === 'drift' ? '#fdd835'
+                                    : specStatus === 'na' ? '#adb5bd'
                                         : '#e53935';
                                 // Botón condicional según la zona efectiva
                                 // Zona roja (0–33): "Generar Spec", zona amarilla (34–66): "Mejorar Spec", zona verde (67–100) + traced: sin botón
-                                const showButton = !(specStatus === 'traced' && effectiveScore >= 67);
+                                const showButton = specStatus !== 'na' && !(specStatus === 'traced' && effectiveScore >= 67);
                                 const buttonLabel = effectiveScore <= 33 ? 'Generar Spec' : 'Mejorar Spec';
                                 return (_jsxs("section", { className: "module-panel__section", children: [_jsx("h3", { className: "module-panel__section-title", children: "Trazabilidad" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }, children: [_jsx("span", { style: { fontSize: '0.95rem', fontWeight: 500 }, children: hasScore ? scoreDisplay : 'Sin trazabilidad' }), _jsx("span", { style: {
                                                         fontSize: '0.75rem',

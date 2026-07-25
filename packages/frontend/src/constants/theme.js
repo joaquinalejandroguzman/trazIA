@@ -173,6 +173,9 @@ export const TRACEABILITY_ANCHORS = {
  * Formato de salida: siempre `#rrggbb` en minúsculas (7 caracteres)
  */
 export function getTraceabilityColor(score) {
+    // Score -1 indica specStatus 'na' — color gris neutro
+    if (score < 0)
+        return '#adb5bd';
     // Clamping de valores no finitos y fuera de rango
     let s = Number.isFinite(score) ? score : 0;
     if (s < 0)
@@ -210,6 +213,10 @@ export function getTraceabilityColor(score) {
  */
 export function getEffectiveScore(specStatus, specHealthScore) {
     const score = specHealthScore ?? 0;
+    // No aplica — el módulo no necesita spec
+    if (specStatus === 'na') {
+        return -1;
+    }
     if (specStatus === undefined || specStatus === 'untraced') {
         return 0;
     }
