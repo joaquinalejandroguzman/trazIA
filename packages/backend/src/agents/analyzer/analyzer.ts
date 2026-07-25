@@ -535,7 +535,7 @@ function classifyByHeuristic(
   // 1. Archivos que no necesitan spec → na (gris)
   const naExtensions = ['.json', '.css', '.scss', '.less', '.html', '.htm',
     '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2',
-    '.ttf', '.eot', '.map', '.lock', '.env', '.editorconfig']
+    '.ttf', '.eot', '.map', '.lock', '.env', '.editorconfig', '.md']
   if (naExtensions.includes(ext)) {
     return { specStatus: 'na', specHealthScore: 0 }
   }
@@ -546,7 +546,7 @@ function classifyByHeuristic(
     '.eslintrc.js', '.prettierrc', '.prettierrc.json', 'jest.config',
     'vitest.config', 'vite.config', '.gitignore', '.env.example',
     'Dockerfile', 'docker-compose', 'Makefile', 'cdk.json',
-    '.editorconfig', '.prettierignore', '.eslintignore',
+    '.editorconfig', '.prettierignore', '.eslintignore', '.kiroignore',
   ]
   if (configPatterns.some((p) => fileName.startsWith(p) || fileName === p)) {
     return { specStatus: 'na', specHealthScore: 0 }
