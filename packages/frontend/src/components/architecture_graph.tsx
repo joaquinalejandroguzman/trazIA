@@ -15,6 +15,18 @@ import type { ModuleNode, FolderNode, IntegrationNode, GraphNode, GraphEdge } fr
 import { ZONE_COLORS, INTEGRATION_COLORS, getFileIcon, detectZone, getTraceabilityColor, getEffectiveScore } from '../constants/theme'
 import { computeFolderDepth, getHierarchyFontSize } from '../utils/folder_hierarchy'
 import { FIT_VIEW_DURATION, FIT_VIEW_PADDING } from '../utils/folder_panel_helpers'
+import {
+  computeLayout,
+  getAdaptiveColumns,
+  FILE_NODE_WIDTH,
+  FILE_NODE_HEIGHT,
+  FOLDER_PADDING_X,
+  FOLDER_PADDING_Y,
+  FOLDER_GAP,
+  INTEGRATION_NODE_WIDTH,
+  INTEGRATION_NODE_HEIGHT,
+  ROOT_GAP,
+} from '../utils/graph_layout_engine'
 
 // Interfaz imperativa para controlar el grafo desde fuera
 export interface ArchitectureGraphRef {
@@ -29,15 +41,6 @@ function FolderGroupNode({ data }: { data: Record<string, unknown> }) {
 // Registro de nodeTypes (estable, fuera del render para evitar re-renders)
 const nodeTypes = { folderGroup: FolderGroupNode }
 
-// Dimensiones
-const FILE_NODE_WIDTH = 170
-const FILE_NODE_HEIGHT = 36
-const FOLDER_PADDING_X = 20
-const FOLDER_PADDING_Y = 40 // espacio para el header
-const FOLDER_GAP = 12
-const INTEGRATION_NODE_WIDTH = 150
-const INTEGRATION_NODE_HEIGHT = 50
-
 interface ArchitectureGraphProps {
   modules: ModuleNode[]
   folders: FolderNode[]
@@ -49,8 +52,8 @@ interface ArchitectureGraphProps {
 
 /**
  * Calcula el layout de los nodos dentro de cada carpeta.
- * Los archivos se colocan en una grilla dentro de su carpeta padre.
- * Las carpetas se posicionan según su jerarquía.
+ * Delega el cálculo de posiciones y tamaños a computeLayout() del layout engine,
+ * y se encarga de crear los Node[] de ReactFlow con estilos y JSX.
  */
 function buildLayoutNodes(
   modules: ModuleNode[],
@@ -60,7 +63,10 @@ function buildLayoutNodes(
 ): Node[] {
   const nodes: Node[] = []
 
-  // Agrupar módulos por carpeta padre
+  // Delegar cálculo de posiciones y tamaños al layout engine
+  const { folderSizes, folderPositions, rootGridWidth } = computeLayout(modules, folders, integrations)
+
+  // Agrupar módulos por carpeta padre (para posicionar archivos dentro de su carpeta)
   const modulesByFolder = new Map<string, ModuleNode[]>()
   const rootModules: ModuleNode[] = []
 
@@ -75,98 +81,8 @@ function buildLayoutNodes(
     }
   }
 
-  // Agrupar subcarpetas por su padre
-  const subfoldersByParent = new Map<string, FolderNode[]>()
-  const rootFolders: FolderNode[] = []
-
-  for (const folder of folders) {
-    if (folder.parentFolder) {
-      if (!subfoldersByParent.has(folder.parentFolder)) {
-        subfoldersByParent.set(folder.parentFolder, [])
-      }
-      subfoldersByParent.get(folder.parentFolder)!.push(folder)
-    } else {
-      rootFolders.push(folder)
-    }
-  }
-
   // Mapa de carpetas para calcular profundidad jerárquica
   const foldersMap = new Map<string, FolderNode>(folders.map(f => [f.id, f]))
-
-  // Calcular tamaño de cada carpeta basado en sus hijos
-  const folderSizes = new Map<string, { width: number; height: number }>()
-
-  function calcFolderSize(folderId: string): { width: number; height: number } {
-    if (folderSizes.has(folderId)) return folderSizes.get(folderId)!
-
-    const childModules = modulesByFolder.get(folderId) ?? []
-    const childFolders = subfoldersByParent.get(folderId) ?? []
-
-    // Archivos en grilla de 2 columnas
-    const cols = 2
-    const fileRows = Math.ceil(childModules.length / cols)
-    const filesWidth = cols * (FILE_NODE_WIDTH + FOLDER_GAP)
-    const filesHeight = fileRows * (FILE_NODE_HEIGHT + FOLDER_GAP)
-
-    // Subcarpetas se colocan debajo de los archivos
-    let subfoldersWidth = 0
-    let subfoldersHeight = 0
-    for (const sub of childFolders) {
-      const subSize = calcFolderSize(sub.id)
-      subfoldersWidth += subSize.width + FOLDER_GAP
-      subfoldersHeight = Math.max(subfoldersHeight, subSize.height)
-    }
-
-    const contentWidth = Math.max(filesWidth, subfoldersWidth, 200)
-    const contentHeight = filesHeight + (subfoldersHeight > 0 ? subfoldersHeight + FOLDER_GAP : 0)
-
-    const size = {
-      width: contentWidth + FOLDER_PADDING_X * 2,
-      height: contentHeight + FOLDER_PADDING_Y + FOLDER_PADDING_X,
-    }
-    folderSizes.set(folderId, size)
-    return size
-  }
-
-  // Pre-calcular todos los tamaños
-  for (const folder of folders) {
-    calcFolderSize(folder.id)
-  }
-
-  // Posicionar carpetas raíz en una fila horizontal
-  let rootX = 0
-  const folderPositions = new Map<string, { x: number; y: number }>()
-
-  for (const folder of rootFolders) {
-    const size = folderSizes.get(folder.id) ?? { width: 200, height: 150 }
-    folderPositions.set(folder.id, { x: rootX, y: 0 })
-    rootX += size.width + 40
-  }
-
-  // Posicionar subcarpetas dentro de sus padres
-  function positionSubfolders(parentId: string) {
-    const childFolders = subfoldersByParent.get(parentId) ?? []
-    const childModules = modulesByFolder.get(parentId) ?? []
-
-    // Archivos van arriba, subcarpetas abajo
-    const cols = 2
-    const fileRows = Math.ceil(childModules.length / cols)
-    const filesHeight = fileRows * (FILE_NODE_HEIGHT + FOLDER_GAP)
-
-    let subX = FOLDER_PADDING_X
-    const subY = FOLDER_PADDING_Y + filesHeight + FOLDER_GAP
-
-    for (const sub of childFolders) {
-      const subSize = folderSizes.get(sub.id) ?? { width: 200, height: 150 }
-      folderPositions.set(sub.id, { x: subX, y: subY })
-      subX += subSize.width + FOLDER_GAP
-      positionSubfolders(sub.id)
-    }
-  }
-
-  for (const folder of rootFolders) {
-    positionSubfolders(folder.id)
-  }
 
   // Crear nodos de carpeta (React Flow parent nodes)
   for (const folder of folders) {
@@ -235,13 +151,14 @@ function buildLayoutNodes(
     const icon = getFileIcon(mod.path)
     const isSelected = mod.id === selectedId
 
-    // Calcular posición dentro de la carpeta padre
+    // Calcular posición dentro de la carpeta padre usando columnas adaptativas
     let position = { x: 0, y: 0 }
     if (mod.parentFolder) {
       const siblings = modulesByFolder.get(mod.parentFolder) ?? []
       const idx = siblings.indexOf(mod)
-      const col = idx % 2
-      const row = Math.floor(idx / 2)
+      const cols = getAdaptiveColumns(siblings.length)
+      const col = cols > 0 ? idx % cols : 0
+      const row = cols > 0 ? Math.floor(idx / cols) : 0
       position = {
         x: FOLDER_PADDING_X + col * (FILE_NODE_WIDTH + FOLDER_GAP),
         y: FOLDER_PADDING_Y + row * (FILE_NODE_HEIGHT + FOLDER_GAP),
@@ -319,7 +236,7 @@ function buildLayoutNodes(
 
     nodes.push({
       id: integ.id,
-      position: { x: rootX + 40, y: idx * (INTEGRATION_NODE_HEIGHT + 20) },
+      position: { x: rootGridWidth + ROOT_GAP, y: idx * (INTEGRATION_NODE_HEIGHT + 20) },
       data: {
         label: (
           <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
