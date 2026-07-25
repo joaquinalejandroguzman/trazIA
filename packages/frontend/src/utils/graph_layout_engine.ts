@@ -78,6 +78,8 @@ export interface SubfolderRow {
 export interface LayoutResult {
   folderSizes: Map<string, Size>
   folderPositions: Map<string, Position>
+  /** ContentWidth efectivo usado en el wrapping de cada carpeta (para posicionar subcarpetas) */
+  folderContentWidths: Map<string, number>
   /** Ancho total de la grilla de raíces (para posicionar integraciones) */
   rootGridWidth: number
 }
@@ -88,16 +90,16 @@ export interface LayoutResult {
  * Determina el número de columnas adaptativo para una cantidad de archivos.
  * - 0 archivos → 0 columnas
  * - 1–3 archivos → N columnas (una sola fila)
- * - 4–8 archivos → 2 columnas
- * - 9–15 archivos → 3 columnas
- * - >15 archivos → 4 columnas
+ * - 4–8 archivos → 3 columnas
+ * - 9–15 archivos → 4 columnas
+ * - >15 archivos → 5 columnas
  */
 export function getAdaptiveColumns(fileCount: number): number {
   if (fileCount === 0) return 0
   if (fileCount <= 3) return fileCount
-  if (fileCount <= 8) return 2
-  if (fileCount <= 15) return 3
-  return 4
+  if (fileCount <= 8) return 3
+  if (fileCount <= 15) return 4
+  return 5
 }
 
 /**
@@ -166,12 +168,16 @@ export function wrapSubfolders(
  * 
  * Optimiza el contentWidth para que la carpeta resultante tienda a un
  * aspect ratio cuadrado, distribuyendo subcarpetas de forma equilibrada.
+ * 
+ * Además guarda el contentWidth efectivo en contentWidthMemo para que
+ * positionSubfoldersInParent use exactamente el mismo valor.
  */
 export function calcFolderSize(
   folderId: string,
   modulesByFolder: Map<string, { length: number }>,
   subfoldersByParent: Map<string, string[]>,
-  memo: Map<string, Size>
+  memo: Map<string, Size>,
+  contentWidthMemo?: Map<string, number>
 ): Size {
   // Memoización: si ya se calculó, retornar directamente
   const cached = memo.get(folderId)
@@ -184,6 +190,7 @@ export function calcFolderSize(
   if (fileCount === 0 && childIds.length === 0) {
     const size: Size = { width: 120, height: 60 }
     memo.set(folderId, size)
+    contentWidthMemo?.set(folderId, 120)
     return size
   }
 
@@ -194,26 +201,19 @@ export function calcFolderSize(
 
   // Calcular tamaños de subcarpetas recursivamente
   const subfolderSizes: Size[] = childIds.map(id =>
-    calcFolderSize(id, modulesByFolder, subfoldersByParent, memo)
+    calcFolderSize(id, modulesByFolder, subfoldersByParent, memo, contentWidthMemo)
   )
 
   // Calcular el contentWidth óptimo para un aspect ratio equilibrado.
-  // Estrategia: estimar el área total de subcarpetas y buscar un ancho
-  // que produzca una forma cuadrada considerando la zona de archivos.
   let optimalContentWidth = Math.max(fileGridWidth, MIN_FOLDER_WIDTH)
 
   if (subfolderSizes.length > 0) {
     // Estimar el área total de las subcarpetas
     const totalSubArea = subfolderSizes.reduce((sum, s) => sum + s.width * s.height, 0)
-    // Ancho promedio de subcarpetas (para heurística de mínimo razonable)
-    const avgSubWidth = subfolderSizes.reduce((sum, s) => sum + s.width, 0) / subfolderSizes.length
 
     // El alto ideal del bloque de subcarpetas debería ser proporcional
     // al ancho total para tender a un cuadrado.
-    // AreaTotal ≈ contentWidth × subBlockHeight → subBlockHeight ≈ area / contentWidth
-    // Queremos: (fileGridHeight + subBlockHeight + paddings) ≈ (contentWidth + paddings)
-    // Simplificando: contentWidth² ≈ totalSubArea + fileGridHeight × contentWidth
-    // Resolviendo la cuadrática: contentWidth = (fileGridHeight + sqrt(fileGridHeight² + 4*totalSubArea)) / 2
+    // Resolviendo: contentWidth = (fileGridHeight + sqrt(fileGridHeight² + 4*totalSubArea)) / 2
     const discriminant = fileGridHeight * fileGridHeight + 4 * totalSubArea
     const idealWidth = (fileGridHeight + Math.sqrt(discriminant)) / 2
 
@@ -224,8 +224,7 @@ export function calcFolderSize(
       idealWidth,
       fileGridWidth,
       widestSub,
-      MIN_FOLDER_WIDTH,
-      avgSubWidth * 2 + FOLDER_GAP // al menos 2 subcarpetas por fila si caben
+      MIN_FOLDER_WIDTH
     )
   }
 
@@ -233,6 +232,9 @@ export function calcFolderSize(
   const { rows, finalContentWidth } = childIds.length > 0
     ? wrapSubfolders(subfolderSizes, optimalContentWidth)
     : { rows: [], finalContentWidth: optimalContentWidth }
+
+  // Guardar el contentWidth efectivo para que positionSubfoldersInParent use el mismo
+  contentWidthMemo?.set(folderId, finalContentWidth)
 
   // Calcular altura total de filas de subcarpetas
   let totalSubfolderRowsHeight = 0
@@ -249,8 +251,8 @@ export function calcFolderSize(
   // Ancho de la fila más ancha de subcarpetas
   const widestRow = rows.reduce((max, row) => Math.max(max, row.width), 0)
 
-  // Dimensiones finales
-  const width = Math.max(fileGridWidth, widestRow, finalContentWidth, MIN_FOLDER_WIDTH) + FOLDER_PADDING_X * 2
+  // Dimensiones finales: usar el ancho real ocupado (no el contentWidth inflado)
+  const width = Math.max(fileGridWidth, widestRow, MIN_FOLDER_WIDTH) + FOLDER_PADDING_X * 2
   const height = fileGridHeight + totalSubfolderRowsHeight + FOLDER_PADDING_Y + FOLDER_PADDING_X
 
   const size: Size = { width, height }
@@ -368,6 +370,8 @@ export function computeRootGrid(
 
 /**
  * Posiciona subcarpetas dentro de un padre usando el algoritmo de wrapping.
+ * Usa el contentWidth exacto que se calculó durante calcFolderSize para
+ * garantizar consistencia entre tamaño y posicionamiento.
  * Retorna las posiciones relativas al padre.
  */
 export function positionSubfoldersInParent(
@@ -386,7 +390,7 @@ export function positionSubfoldersInParent(
     id => folderSizes.get(id) ?? { width: MIN_FOLDER_WIDTH, height: MIN_FOLDER_HEIGHT }
   )
 
-  // Aplicar wrapping
+  // Aplicar wrapping con el contentWidth exacto que se usó en calcFolderSize
   const { rows } = wrapSubfolders(subfolderSizes, contentWidth)
 
   // Posicionar: primera fila a Y = FOLDER_PADDING_Y + fileGridHeight + FOLDER_GAP
@@ -446,9 +450,11 @@ export function computeLayout(
   }
 
   // 3. Calcular tamaños bottom-up para todas las carpetas
+  //    contentWidthMemo guarda el contentWidth exacto usado en el wrapping
   const memo = new Map<string, Size>()
+  const contentWidthMemo = new Map<string, number>()
   for (const folder of folders) {
-    calcFolderSize(folder.id, modulesByFolder, subfoldersByParent, memo)
+    calcFolderSize(folder.id, modulesByFolder, subfoldersByParent, memo, contentWidthMemo)
   }
 
   // 4. Posicionar carpetas raíz en grilla
@@ -458,11 +464,11 @@ export function computeLayout(
   const folderPositions = new Map<string, Position>()
 
   function positionFolderRecursive(folderId: string, parentAbsolutePos: Position) {
-    const folderSize = memo.get(folderId) ?? { width: MIN_FOLDER_WIDTH, height: MIN_FOLDER_HEIGHT }
     const fileCount = modulesByFolder.get(folderId)?.length ?? 0
     const cols = getAdaptiveColumns(fileCount)
     const fileGridHeight = computeFileGridHeight(fileCount, cols)
-    const contentWidth = Math.max(folderSize.width - FOLDER_PADDING_X * 2, MIN_FOLDER_WIDTH)
+    // Usar el contentWidth exacto almacenado durante calcFolderSize
+    const contentWidth = contentWidthMemo.get(folderId) ?? MIN_FOLDER_WIDTH
 
     // Posicionar subcarpetas de esta carpeta (posiciones relativas al padre)
     const childPositions = positionSubfoldersInParent(
@@ -489,6 +495,7 @@ export function computeLayout(
   return {
     folderSizes: memo,
     folderPositions,
+    folderContentWidths: contentWidthMemo,
     rootGridWidth,
   }
 }
