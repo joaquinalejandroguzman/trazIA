@@ -30,7 +30,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Calcula el offset de posición según el estado del panel de spec
-  const rightOffset = isSpecPanelOpen ? specPanelWidth + 24 : 24
+  const rightOffset = isSpecPanelOpen ? specPanelWidth + -36 : 24
 
   // Abre el panel y mueve el focus al input
   const handleOpen = useCallback(() => {
