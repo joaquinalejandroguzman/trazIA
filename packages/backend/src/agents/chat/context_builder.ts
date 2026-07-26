@@ -159,3 +159,153 @@ export function isGeneralRepoQuestion(
   const lowerMessage = message.toLowerCase()
   return GENERAL_KEYWORDS.some(keyword => lowerMessage.includes(keyword))
 }
+
+// --- Detección de preguntas de dependencias ---
+
+/** Patrones de eliminación (almacenados normalizados: sin acentos, lowercase) */
+export const DEPENDENCY_DELETION_PATTERNS: string[] = [
+  'que pasa si borro',
+  'que pasa si elimino',
+  'que pasa si quito',
+  'que se rompe si borro',
+  'que se rompe si elimino',
+  'que se rompe si quito',
+  'que afecta si borro',
+  'que afecta si elimino',
+  'que afecta si quito',
+]
+
+/** Patrones de consulta de dependencias (almacenados normalizados) */
+export const DEPENDENCY_QUERY_PATTERNS: string[] = [
+  'dependencias de',
+  'quien depende de',
+  'quien usa',
+  'quien importa',
+]
+
+/**
+ * Normaliza acentos: NFD descompone caracteres, luego se eliminan marcas diacríticas.
+ */
+function normalizeAccents(text: string): string {
+  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+/**
+ * Determina si el mensaje del usuario es una pregunta sobre dependencias
+ * o eliminación de módulos. Evalúa patrones como substring de forma
+ * case-insensitive y accent-insensitive.
+ * Retorna false para mensajes vacíos o solo whitespace.
+ */
+export function isDependencyQuestion(message: string): boolean {
+  if (!message || !message.trim()) return false
+
+  const normalized = normalizeAccents(message.toLowerCase())
+
+  const allPatterns = [...DEPENDENCY_DELETION_PATTERNS, ...DEPENDENCY_QUERY_PATTERNS]
+  return allPatterns.some(pattern => normalized.includes(pattern))
+}
+
+// --- Análisis de dependencias inversas ---
+
+/**
+ * Calcula la unión de dependencias inversas para uno o más módulos objetivo.
+ * Recorre `allModules` y retorna aquellos cuyo `dependencies` contiene el ID
+ * de al menos un target. Excluye los propios targets del resultado.
+ * Sin duplicados, preserva el orden de aparición en `allModules`.
+ * Retorna [] si targets o allModules están vacíos.
+ */
+export function analyzeDependencies(
+  targets: ModuleNode[],
+  allModules: ModuleNode[]
+): ModuleNode[] {
+  if (targets.length === 0 || allModules.length === 0) return []
+
+  // Set de IDs de targets para lookup O(1)
+  const targetIds = new Set(targets.map(t => t.id))
+
+  // Recorrer allModules y filtrar los que dependen de al menos un target
+  const result: ModuleNode[] = []
+  const seenIds = new Set<string>()
+
+  for (const mod of allModules) {
+    // Excluir los propios targets del resultado
+    if (targetIds.has(mod.id)) continue
+
+    // Evitar duplicados
+    if (seenIds.has(mod.id)) continue
+
+    // Verificar si este módulo depende de al menos un target
+    const dependsOnTarget = mod.dependencies.some(depId => targetIds.has(depId))
+    if (dependsOnTarget) {
+      result.push(mod)
+      seenIds.add(mod.id)
+    }
+  }
+
+  return result
+}
+
+/**
+ * Construye el bloque de contexto enriquecido con el análisis de dependencias
+ * para inyectar al prompt del LLM. Genera una sección por cada target con:
+ * - Encabezado con nombre del módulo
+ * - Lista de dependencias inversas (o texto indicando que no hay)
+ * - Total de módulos afectados
+ * - Dependencias directas del target (resueltas desde allModules)
+ * Retorna string vacío si targets está vacío.
+ */
+export function buildDependencyContext(
+  targets: ModuleNode[],
+  inverseDeps: ModuleNode[],
+  allModules: ModuleNode[]
+): string {
+  if (targets.length === 0) return ''
+
+  // Mapa de ID → ModuleNode para resolver dependencias directas
+  const moduleMap = new Map(allModules.map(m => [m.id, m]))
+
+  const sections: string[] = []
+
+  for (const target of targets) {
+    const lines: string[] = []
+
+    // Encabezado
+    lines.push(`=== Análisis de Dependencias: ${target.name} ===`)
+
+    // Dependencias inversas (módulos que dependen del target)
+    if (inverseDeps.length > 0) {
+      lines.push(`Módulos que dependen de ${target.name}:`)
+      for (const dep of inverseDeps) {
+        lines.push(`- ${dep.name} (${dep.path})`)
+      }
+    } else {
+      lines.push(`Ningún módulo depende de ${target.name}`)
+    }
+
+    // Total de módulos afectados
+    lines.push(`Total de módulos afectados: ${inverseDeps.length}`)
+
+    // Dependencias directas del target (resueltas desde allModules)
+    lines.push('')
+    lines.push('Módulos de los que depende:')
+    if (target.dependencies.length === 0) {
+      lines.push('ninguna')
+    } else {
+      for (const depId of target.dependencies) {
+        const resolved = moduleMap.get(depId)
+        if (resolved) {
+          lines.push(`- ${resolved.name} (${resolved.path})`)
+        }
+      }
+      // Si ninguna dependencia pudo resolverse, mostrar "ninguna"
+      const resolvedCount = target.dependencies.filter(id => moduleMap.has(id)).length
+      if (resolvedCount === 0) {
+        lines.push('ninguna')
+      }
+    }
+
+    sections.push(lines.join('\n'))
+  }
+
+  return sections.join('\n\n')
+}

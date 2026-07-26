@@ -5,8 +5,8 @@ import crypto from 'crypto'
 import { Router, type Request, type Response } from 'express'
 import { bedrockClient } from '../clients/bedrock_client'
 import { classifyIntent } from '../agents/chat/router'
-import { buildRepoContext, detectMentionedModules, isGeneralRepoQuestion } from '../agents/chat/context_builder'
-import { CHAT_SYSTEM_PROMPT, FIXED_REPLIES, GENERAL_REPO_ADDENDUM } from '../agents/chat/prompt'
+import { buildRepoContext, detectMentionedModules, isGeneralRepoQuestion, isDependencyQuestion, analyzeDependencies, buildDependencyContext } from '../agents/chat/context_builder'
+import { CHAT_SYSTEM_PROMPT, FIXED_REPLIES, GENERAL_REPO_ADDENDUM, DEPENDENCY_ANALYSIS_ADDENDUM } from '../agents/chat/prompt'
 import { getHistory, addToHistory } from '../agents/chat/history'
 import { withLlmRetry } from '../shared/llm_retry'
 import type { ModuleNode } from '../shared/types'
@@ -100,6 +100,25 @@ router.post('/chat', async (req: Request, res: Response) => {
     }
     // else: sin focusModules (fallback actual)
 
+    // --- Análisis de dependencias ---
+    const isDependency = isDependencyQuestion(truncatedMessage)
+    let dependencyContext = ''
+
+    if (isDependency && mentionedModules.length >= 1) {
+      try {
+        const inverseDeps = analyzeDependencies(mentionedModules, modules)
+        dependencyContext = buildDependencyContext(mentionedModules, inverseDeps, modules)
+        systemPromptAddendum += `\n${DEPENDENCY_ANALYSIS_ADDENDUM}`
+      } catch (error: unknown) {
+        console.error(JSON.stringify({
+          agente: 'chat-route',
+          módulo: 'dependency-analysis',
+          error: error instanceof Error ? error.message : 'Error desconocido',
+        }))
+        // Continuar sin dependency context
+      }
+    }
+
     // Construir contexto del repositorio
     const repoContext = buildRepoContext(modules, {
       readme,
@@ -128,7 +147,7 @@ router.post('/chat', async (req: Request, res: Response) => {
               model: CHAT_MODEL,
               max_tokens: CHAT_MAX_TOKENS,
               temperature: CHAT_TEMPERATURE,
-              system: `${CHAT_SYSTEM_PROMPT}${systemPromptAddendum}\n\n--- Contexto del Repositorio ---\n${repoContext}`,
+              system: `${CHAT_SYSTEM_PROMPT}${systemPromptAddendum}\n\n--- Contexto del Repositorio ---\n${repoContext}\n${dependencyContext}`,
               messages: [
                 ...history.map((msg) => ({
                   role: msg.role as 'user' | 'assistant',

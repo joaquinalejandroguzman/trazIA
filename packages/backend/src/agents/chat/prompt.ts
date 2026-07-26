@@ -40,3 +40,13 @@ export const FIXED_REPLIES: Record<'saludo' | 'jailbreak' | 'offtopic' | 'modulo
  * Se concatena después de CHAT_SYSTEM_PROMPT, separado por newline.
  */
 export const GENERAL_REPO_ADDENDUM: string = "El usuario está preguntando sobre el repositorio en general. Arrancá tu respuesta con 'Voy a analizar todos los módulos del repositorio:' y hacé un resumen de qué hace cada uno, basándote en el código fuente proporcionado."
+
+/**
+ * Addendum que se agrega al system prompt cuando se detecta una pregunta de dependencias.
+ * Instruye al LLM sobre cómo responder preguntas de dependencias inversas e impacto de eliminación.
+ */
+export const DEPENDENCY_ANALYSIS_ADDENDUM: string = `El usuario está preguntando sobre dependencias o impacto de eliminar un módulo. Basándote en el análisis de dependencias proporcionado:
+- Listá los módulos afectados con nombre y ruta, uno por línea.
+- Indicá la cantidad numérica de módulos afectados.
+- Si el módulo no tiene dependencias inversas (ningún otro módulo lo importa), indicá explícitamente que no tiene dependencias inversas.
+- Explicá brevemente el impacto potencial de la eliminación.`
