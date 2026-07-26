@@ -350,11 +350,13 @@ const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphPro
           fitViewOptions={{ padding: FIT_VIEW_PADDING }}
           minZoom={0.2}
           maxZoom={2.5}
+          nodesDraggable={false}
+          nodesConnectable={false}
           proOptions={{ hideAttribution: true }}
         >
           <Background gap={20} color="#e8e8e8" />
-          <Controls />
           <MiniMap
+            position="bottom-left"
             nodeColor={(node) => {
               const graphNode = nodeById.get(node.id)
               if (!graphNode) return '#ccc'
@@ -367,6 +369,7 @@ const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphPro
             pannable
             zoomable
           />
+          <Controls position="bottom-left" style={{ left: 210 }} showInteractive={false} />
         </ReactFlow>
       </div>
     )
