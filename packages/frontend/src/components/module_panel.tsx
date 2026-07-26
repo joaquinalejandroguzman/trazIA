@@ -164,17 +164,15 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
               // Badge de estado: texto y color según specStatus
               const badgeText = specStatus === 'traced' ? 'Trazado'
                 : specStatus === 'drift' ? 'Drift'
-                : specStatus === 'na' ? 'N/A'
                 : 'Sin spec'
               const badgeColor = specStatus === 'traced' ? '#43a047'
                 : specStatus === 'drift' ? '#fdd835'
-                : specStatus === 'na' ? '#adb5bd'
                 : '#e53935'
 
               // Botón condicional según la zona efectiva
-              // specStatus 'na': no mostrar botón (no necesita spec)
+              // El caso specStatus 'na' ya retornó arriba: no llega hasta acá
               // Zona roja (0–33): "Generar Spec", zona amarilla (34–66): "Mejorar Spec", zona verde (67–100) + traced: sin botón
-              const showButton = specStatus !== 'na' && !(specStatus === 'traced' && effectiveScore >= 67)
+              const showButton = !(specStatus === 'traced' && effectiveScore >= 67)
               const buttonLabel = effectiveScore <= 33 ? 'Generar Spec' : 'Mejorar Spec'
 
               return (
