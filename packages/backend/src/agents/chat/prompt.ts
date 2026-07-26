@@ -31,6 +31,7 @@ export const FIXED_REPLIES: Record<'saludo' | 'jailbreak' | 'offtopic' | 'modulo
     'No puedo ayudarte con eso. Si tenés preguntas sobre la estructura o módulos del repositorio, con gusto te respondo.',
   offtopic:
     'Eso no está relacionado con el repositorio. Podés preguntar sobre la estructura, módulos o dependencias del código.',
+  // eslint-disable-next-line camelcase -- debe coincidir con la categoría del router de intención
   modulo_no_encontrado:
     'No encontré ese módulo en el repositorio. Podés preguntar por cualquier módulo que aparezca en el grafo.',
 }

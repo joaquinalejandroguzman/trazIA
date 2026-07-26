@@ -53,6 +53,7 @@ describe('Feature: multi-module-chat-bugs, Property 1: Bug Condition — include
           const result = buildRepoContext(modules, {
             focusModules: modules,
             includeSnippets: false,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cast deliberado: propiedad inexistente para demostrar el bug
           } as any)
 
           // ASSERT 1: El output NO debe contener sourceContent de ningún módulo

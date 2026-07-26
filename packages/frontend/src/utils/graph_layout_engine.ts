@@ -417,7 +417,7 @@ export function positionSubfoldersInParent(
 export function computeLayout(
   modules: ModuleNode[],
   folders: FolderNode[],
-  integrations: IntegrationNode[]
+  _integrations: IntegrationNode[]
 ): LayoutResult {
   // 1. Construir índice de módulos por carpeta (solo necesitamos el count)
   const modulesByFolder = new Map<string, { length: number }>()

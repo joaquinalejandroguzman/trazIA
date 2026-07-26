@@ -1,5 +1,5 @@
 // Tests para el router de intención del chat
-import { classifyIntent, INTENT_RULES, ChatIntent, IntentRule } from './router'
+import { classifyIntent, INTENT_RULES, IntentRule } from './router'
 
 describe('classifyIntent', () => {
   describe('jailbreak — mayor prioridad', () => {

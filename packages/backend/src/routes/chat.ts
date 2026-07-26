@@ -145,6 +145,7 @@ router.post('/chat', async (req: Request, res: Response) => {
           bedrockClient.messages.create(
             {
               model: CHAT_MODEL,
+              // eslint-disable-next-line camelcase -- nombre exigido por la API de Anthropic/Bedrock
               max_tokens: CHAT_MAX_TOKENS,
               temperature: CHAT_TEMPERATURE,
               system: `${CHAT_SYSTEM_PROMPT}${systemPromptAddendum}\n\n--- Contexto del Repositorio ---\n${repoContext}\n${dependencyContext}`,
