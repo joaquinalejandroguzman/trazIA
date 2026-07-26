@@ -116,7 +116,7 @@ const App: React.FC = () => {
           {/* Chat contextual — posición fija, coexiste con el panel de spec */}
           <ChatPanel
             modules={result.modules}
-            readme={undefined}
+            readme={result.readme}
             isSpecPanelOpen={selectedNode !== null}
             specPanelWidth={400}
           />

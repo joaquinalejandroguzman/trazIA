@@ -21,7 +21,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   specPanelWidth = 400,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false)
-  const { messages, isLoading, error, sendMessage } = useChat({ modules, readme })
+  const { messages, isLoading, error, analyzingModules, sendMessage } = useChat({ modules, readme })
   const [inputValue, setInputValue] = useState<string>('')
 
   // Refs para manejo de focus y scroll
@@ -145,9 +145,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
           {/* Indicador de carga */}
           {isLoading && (
-            <div className="chat-panel__loading">
+            <div className="chat-panel__loading" aria-live="polite">
               <span className="chat-panel__spinner" />
-              Pensando...
+              {analyzingModules && analyzingModules.length > 0
+                ? `Analizando ${analyzingModules.length} módulo${analyzingModules.length > 1 ? 's' : ''}...`
+                : 'Pensando...'}
             </div>
           )}
 

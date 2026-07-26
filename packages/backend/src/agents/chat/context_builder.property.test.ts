@@ -3,7 +3,7 @@
 
 import fc from 'fast-check'
 import { ModuleNode, SpecStatus } from '../../shared/types'
-import { buildRepoContext, detectMentionedModule } from './context_builder'
+import { buildRepoContext, detectMentionedModules } from './context_builder'
 
 // Generador de SpecStatus válido
 const specStatusArb = fc.constantFrom<SpecStatus>('traced', 'drift', 'untraced', 'na')
@@ -146,15 +146,13 @@ describe('Feature: chat-trazia, Property 13: Detección de módulo e inclusión 
           // Crear un mensaje que menciona el nombre del módulo
           const message = `¿Qué hace ${targetModule.name}?`
 
-          // detectMentionedModule debe encontrarlo
-          const detected = detectMentionedModule(message, modules)
-          expect(detected).not.toBeNull()
+          // detectMentionedModules debe encontrarlo
+          const detected = detectMentionedModules(message, modules)
+          expect(detected.length).toBeGreaterThan(0)
 
-          // buildRepoContext con focusModule debe incluir su sourceContent
-          if (detected) {
-            const ctx = buildRepoContext(modules, { focusModule: detected })
-            expect(ctx).toContain(`CODE_${detected.name}`)
-          }
+          // buildRepoContext con focusModules debe incluir su sourceContent
+          const ctx = buildRepoContext(modules, { focusModules: detected })
+          expect(ctx).toContain(`CODE_${detected[0].name}`)
         }
       ),
       { numRuns: 100 }
@@ -183,7 +181,7 @@ describe('Feature: chat-trazia, Property 15: Límite de un solo módulo enriquec
           const focusIndex = indexSeed % modules.length
           const focusModule = modules[focusIndex]
 
-          const ctx = buildRepoContext(modules, { focusModule })
+          const ctx = buildRepoContext(modules, { focusModules: [focusModule] })
 
           // Solo el sourceContent del focusModule debe aparecer
           let sourceContentCount = 0

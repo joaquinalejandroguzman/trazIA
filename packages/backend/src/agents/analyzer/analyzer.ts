@@ -600,7 +600,7 @@ function classifyByHeuristic(
  * @param repoPath - Ruta absoluta al directorio del repositorio clonado
  * @returns Lista de ModuleNode con dependencias mapeadas
  */
-export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]> {
+export async function analyzeRepository(repoPath: string): Promise<{ modules: ModuleNode[]; readme: string }> {
   // Escanear TODOS los archivos relevantes del repo (lógica invertida: todo menos basura)
   const files = scanAllFiles(repoPath, repoPath)
 
@@ -684,5 +684,5 @@ export async function analyzeRepository(repoPath: string): Promise<ModuleNode[]>
     }
   })
 
-  return modules
+  return { modules, readme: readmeContent }
 }

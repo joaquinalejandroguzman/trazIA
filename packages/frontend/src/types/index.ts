@@ -77,6 +77,7 @@ export interface AnalysisResult {
   untracedCount: number       // módulos sin spec
   driftCount: number          // módulos cuya spec no refleja el código actual
   projectHealthScore: number  // score global de salud del proyecto (0-100)
+  readme?: string             // contenido del README.md del repositorio (truncado)
 }
 
 // Respuesta del endpoint de generación de spec EARS (on-demand)
@@ -110,4 +111,5 @@ export interface ChatRequest {
 export interface ChatResponse {
   reply: string
   sessionId: string
+  analyzingModules?: string[]  // nombres de módulos analizados en el contexto
 }

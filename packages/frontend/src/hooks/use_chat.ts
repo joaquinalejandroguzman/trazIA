@@ -13,17 +13,25 @@ interface UseChatReturn {
   messages: ChatMessage[]
   isLoading: boolean
   error: string | null
+  analyzingModules: string[] | null
   sendMessage: (text: string) => Promise<void>
   clearChat: () => void
+}
+
+// Mensaje de bienvenida que se muestra al abrir el chat
+const WELCOME_MESSAGE: ChatMessage = {
+  role: 'assistant',
+  content: '¡Hola! Soy el asistente de TrazIA. Podés preguntarme sobre la estructura del repositorio, sus módulos, dependencias o integraciones. ¿En qué te puedo ayudar?',
 }
 
 // Hook principal que gestiona el estado del chat contextual y la comunicación con el backend
 export function useChat(options: UseChatOptions): UseChatReturn {
   const { modules, readme } = options
 
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [analyzingModules, setAnalyzingModules] = useState<string[] | null>(null)
 
   // Mantener sessionId estable entre re-renders con useRef
   const sessionIdRef = useRef<string>(crypto.randomUUID())
@@ -35,6 +43,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
     setError(null)
+    setAnalyzingModules(null)
 
     try {
       const payload: ChatRequest = {
@@ -46,6 +55,14 @@ export function useChat(options: UseChatOptions): UseChatReturn {
 
       const response = await apiClient.post<ChatResponse>('/api/chat', payload)
 
+      // Actualizar analyzingModules si la respuesta incluye módulos analizados
+      const responseModules = response.data.analyzingModules
+      if (responseModules && responseModules.length > 0) {
+        setAnalyzingModules(responseModules)
+      } else {
+        setAnalyzingModules(null)
+      }
+
       // Agregar respuesta del asistente al estado local
       const assistantMessage: ChatMessage = { role: 'assistant', content: response.data.reply }
       setMessages((prev) => [...prev, assistantMessage])
@@ -53,6 +70,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
       const message =
         err instanceof Error ? err.message : 'Error al enviar el mensaje. Intentá de nuevo.'
       setError(message)
+      setAnalyzingModules(null)
     } finally {
       setIsLoading(false)
     }
@@ -60,8 +78,9 @@ export function useChat(options: UseChatOptions): UseChatReturn {
 
   // Resetea la conversación y genera un nuevo sessionId
   const clearChat = useCallback(() => {
-    setMessages([])
+    setMessages([WELCOME_MESSAGE])
     setError(null)
+    setAnalyzingModules(null)
     sessionIdRef.current = crypto.randomUUID()
   }, [])
 
@@ -69,6 +88,7 @@ export function useChat(options: UseChatOptions): UseChatReturn {
     messages,
     isLoading,
     error,
+    analyzingModules,
     sendMessage,
     clearChat,
   }

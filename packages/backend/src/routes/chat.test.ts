@@ -234,16 +234,16 @@ describe('POST /api/chat', () => {
       expect(callArgs.system).toContain('processPayment')
     })
 
-    it('funciona sin focusModule cuando no se menciona ningún módulo', async () => {
+    it('funciona sin focusModules cuando no se menciona ningún módulo ni keyword general', async () => {
       mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: 'El proyecto está bien organizado.' }],
+        content: [{ type: 'text', text: 'Las dependencias están bien organizadas.' }],
       })
 
       await request(app)
         .post('/api/chat')
-        .send({ message: '¿cómo está organizado el proyecto?', modules: sampleModules })
+        .send({ message: '¿cómo están organizadas las dependencias?', modules: sampleModules })
 
-      // Verificar que NO incluye sourceContent cuando no hay focusModule
+      // Verificar que NO incluye sourceContent cuando no hay focusModules
       const callArgs = mockCreate.mock.calls[0][0]
       expect(callArgs.system).not.toContain('processPayment')
     })

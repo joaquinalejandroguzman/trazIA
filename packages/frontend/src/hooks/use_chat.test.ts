@@ -37,12 +37,15 @@ describe('useChat', () => {
     mockUUID.mockReturnValue('test-session-id-1234')
   })
 
-  it('inicializa con estado vacío', () => {
+  it('inicializa con mensaje de bienvenida', () => {
     const { result } = renderHook(() => useChat({ modules: sampleModules }))
 
-    expect(result.current.messages).toEqual([])
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0].role).toBe('assistant')
+    expect(result.current.messages[0].content).toContain('TrazIA')
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
+    expect(result.current.analyzingModules).toBeNull()
   })
 
   it('genera sessionId al montar', () => {
@@ -59,8 +62,8 @@ describe('useChat', () => {
       await result.current.sendMessage('Hola, ¿qué módulos hay?')
     })
 
-    // El mensaje del usuario debe estar en el estado
-    expect(result.current.messages[0]).toEqual({
+    // El mensaje del usuario debe estar después del bienvenida
+    expect(result.current.messages[1]).toEqual({
       role: 'user',
       content: 'Hola, ¿qué módulos hay?',
     })
@@ -75,8 +78,8 @@ describe('useChat', () => {
       await result.current.sendMessage('¿Cuántos módulos hay?')
     })
 
-    expect(result.current.messages).toHaveLength(2)
-    expect(result.current.messages[1]).toEqual({
+    expect(result.current.messages).toHaveLength(3)
+    expect(result.current.messages[2]).toEqual({
       role: 'assistant',
       content: 'Tenés 3 módulos principales.',
     })
@@ -142,21 +145,22 @@ describe('useChat', () => {
 
     const { result } = renderHook(() => useChat({ modules: sampleModules }))
 
-    // Enviar un mensaje primero
+    // Enviar un mensaje primero (welcome + user + assistant = 3)
     await act(async () => {
       await result.current.sendMessage('test')
     })
-    expect(result.current.messages).toHaveLength(2)
+    expect(result.current.messages).toHaveLength(3)
 
     // Configurar nuevo UUID para después del clearChat
     mockUUID.mockReturnValue('new-session-id-5678')
 
-    // Limpiar chat
+    // Limpiar chat — resetea al mensaje de bienvenida
     act(() => {
       result.current.clearChat()
     })
 
-    expect(result.current.messages).toEqual([])
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0].role).toBe('assistant')
     expect(result.current.error).toBeNull()
 
     // Verificar que el nuevo sessionId se usa en el próximo envío
@@ -184,5 +188,90 @@ describe('useChat', () => {
     })
 
     expect(result.current.error).toBeNull()
+  })
+
+  it('setea analyzingModules cuando la respuesta contiene módulos y persiste hasta el próximo sendMessage', async () => {
+    mockPost.mockResolvedValue({
+      data: { reply: 'Analizando...', sessionId: 'test-session-id-1234', analyzingModules: ['app', 'router'] },
+    })
+
+    const { result } = renderHook(() => useChat({ modules: sampleModules }))
+
+    await act(async () => {
+      await result.current.sendMessage('¿Qué hace el repo?')
+    })
+
+    // analyzingModules persiste después de la respuesta (ya no se resetea en el mismo handler)
+    expect(result.current.analyzingModules).toEqual(['app', 'router'])
+
+    // Se limpia al inicio del siguiente sendMessage
+    mockPost.mockResolvedValue({
+      data: { reply: 'Otra respuesta', sessionId: 'test-session-id-1234' },
+    })
+
+    await act(async () => {
+      await result.current.sendMessage('Otra pregunta')
+    })
+
+    // Sin módulos en la segunda respuesta → queda null
+    expect(result.current.analyzingModules).toBeNull()
+  })
+
+  it('mantiene analyzingModules en null cuando la respuesta no incluye módulos', async () => {
+    mockPost.mockResolvedValue({
+      data: { reply: 'Hola!', sessionId: 'test-session-id-1234' },
+    })
+
+    const { result } = renderHook(() => useChat({ modules: sampleModules }))
+
+    await act(async () => {
+      await result.current.sendMessage('Hola')
+    })
+
+    expect(result.current.analyzingModules).toBeNull()
+  })
+
+  it('mantiene analyzingModules en null cuando analyzingModules es array vacío', async () => {
+    mockPost.mockResolvedValue({
+      data: { reply: 'Ok', sessionId: 'test-session-id-1234', analyzingModules: [] },
+    })
+
+    const { result } = renderHook(() => useChat({ modules: sampleModules }))
+
+    await act(async () => {
+      await result.current.sendMessage('test')
+    })
+
+    expect(result.current.analyzingModules).toBeNull()
+  })
+
+  it('resetea analyzingModules a null cuando hay error', async () => {
+    mockPost.mockRejectedValue(new Error('Network error'))
+
+    const { result } = renderHook(() => useChat({ modules: sampleModules }))
+
+    await act(async () => {
+      await result.current.sendMessage('test')
+    })
+
+    expect(result.current.analyzingModules).toBeNull()
+  })
+
+  it('clearChat resetea analyzingModules a null', async () => {
+    mockPost.mockResolvedValue({
+      data: { reply: 'ok', sessionId: 'test-session-id-1234', analyzingModules: ['app'] },
+    })
+
+    const { result } = renderHook(() => useChat({ modules: sampleModules }))
+
+    await act(async () => {
+      await result.current.sendMessage('test')
+    })
+
+    act(() => {
+      result.current.clearChat()
+    })
+
+    expect(result.current.analyzingModules).toBeNull()
   })
 })

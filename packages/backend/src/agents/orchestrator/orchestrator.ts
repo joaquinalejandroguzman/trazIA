@@ -168,7 +168,8 @@ function buildFolderHierarchy(modules: ModuleNode[]): {
 export function buildAnalysisResult(
   repoUrl: string,
   modules: ModuleNode[],
-  integrations: IntegrationNode[]
+  integrations: IntegrationNode[],
+  readme?: string
 ): AnalysisResult {
   // Construir jerarquía de carpetas
   const { folders, moduleParentMap } = buildFolderHierarchy(modules)
@@ -237,5 +238,6 @@ export function buildAnalysisResult(
     untracedCount,
     driftCount,
     projectHealthScore,
+    readme,
   }
 }

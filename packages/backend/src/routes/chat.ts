@@ -5,8 +5,8 @@ import crypto from 'crypto'
 import { Router, type Request, type Response } from 'express'
 import { bedrockClient } from '../clients/bedrock_client'
 import { classifyIntent } from '../agents/chat/router'
-import { buildRepoContext, detectMentionedModule } from '../agents/chat/context_builder'
-import { CHAT_SYSTEM_PROMPT, FIXED_REPLIES } from '../agents/chat/prompt'
+import { buildRepoContext, detectMentionedModules, isGeneralRepoQuestion } from '../agents/chat/context_builder'
+import { CHAT_SYSTEM_PROMPT, FIXED_REPLIES, GENERAL_REPO_ADDENDUM } from '../agents/chat/prompt'
 import { getHistory, addToHistory } from '../agents/chat/history'
 import { withLlmRetry } from '../shared/llm_retry'
 import type { ModuleNode } from '../shared/types'
@@ -38,6 +38,7 @@ interface ChatRequest {
 interface ChatResponse {
   reply: string
   sessionId: string
+  analyzingModules?: string[]
 }
 
 const router = Router()
@@ -73,20 +74,41 @@ router.post('/chat', async (req: Request, res: Response) => {
       const response: ChatResponse = {
         reply: FIXED_REPLIES[intent],
         sessionId,
+        analyzingModules: [],
       }
       res.json(response)
       return
     }
 
     // intent === 'pregunta_repo' — requiere invocación al LLM
-    // Detectar si el mensaje menciona un módulo específico
-    const detectedModule = detectMentionedModule(truncatedMessage, modules)
+    // Detectar módulos mencionados en el mensaje
+    const mentionedModules = detectMentionedModules(truncatedMessage, modules)
+
+    // Evaluar prioridad: general question → multi-module → single → no-focus
+    const isGeneral = isGeneralRepoQuestion(truncatedMessage, mentionedModules)
+
+    let focusModules: ModuleNode[] | undefined
+    let systemPromptAddendum = ''
+
+    if (isGeneral) {
+      // Pregunta general: incluir todos los módulos
+      focusModules = modules
+      systemPromptAddendum = `\n${GENERAL_REPO_ADDENDUM}`
+    } else if (mentionedModules.length >= 1) {
+      // Módulos mencionados: incluir los detectados
+      focusModules = mentionedModules
+    }
+    // else: sin focusModules (fallback actual)
 
     // Construir contexto del repositorio
     const repoContext = buildRepoContext(modules, {
       readme,
-      focusModule: detectedModule ?? undefined,
+      focusModules,
+      ...(isGeneral && { includeSnippets: false }),
     })
+
+    // Determinar analyzingModules para el response
+    const analyzingModules = focusModules?.map(m => m.name) ?? []
 
     // Obtener historial de la sesión
     const history = getHistory(sessionId)
@@ -106,7 +128,7 @@ router.post('/chat', async (req: Request, res: Response) => {
               model: CHAT_MODEL,
               max_tokens: CHAT_MAX_TOKENS,
               temperature: CHAT_TEMPERATURE,
-              system: `${CHAT_SYSTEM_PROMPT}\n\n--- Contexto del Repositorio ---\n${repoContext}`,
+              system: `${CHAT_SYSTEM_PROMPT}${systemPromptAddendum}\n\n--- Contexto del Repositorio ---\n${repoContext}`,
               messages: [
                 ...history.map((msg) => ({
                   role: msg.role as 'user' | 'assistant',
@@ -135,6 +157,7 @@ router.post('/chat', async (req: Request, res: Response) => {
         const response: ChatResponse = {
           reply: 'La respuesta tardó demasiado. Intentá con una pregunta más corta.',
           sessionId,
+          analyzingModules: [],
         }
         res.json(response)
         return
@@ -150,6 +173,7 @@ router.post('/chat', async (req: Request, res: Response) => {
       const response: ChatResponse = {
         reply: 'Error al generar respuesta. Intentá de nuevo.',
         sessionId,
+        analyzingModules: [],
       }
       res.json(response)
       return
@@ -162,6 +186,7 @@ router.post('/chat', async (req: Request, res: Response) => {
     const response: ChatResponse = {
       reply,
       sessionId,
+      analyzingModules,
     }
     res.json(response)
   } catch (error: unknown) {

@@ -41,7 +41,7 @@ router.post('/analyze', async (req: Request, res: Response) => {
     }))
 
     // Paso 2: Analizar estructura (módulos + dependencias internas)
-    const modules = await analyzeRepository(clonedPath)
+    const { modules, readme } = await analyzeRepository(clonedPath)
 
     console.log(JSON.stringify({
       agente: 'analyze-route',
@@ -59,7 +59,7 @@ router.post('/analyze', async (req: Request, res: Response) => {
     }))
 
     // Paso 4: Orquestar — combinar estructura + integraciones en el grafo final
-    const result: AnalysisResult = buildAnalysisResult(repoUrl.trim(), modules, integrations)
+    const result: AnalysisResult = buildAnalysisResult(repoUrl.trim(), modules, integrations, readme)
 
     console.log(JSON.stringify({
       agente: 'analyze-route',
