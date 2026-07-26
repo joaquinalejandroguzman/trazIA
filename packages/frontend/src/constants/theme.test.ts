@@ -72,8 +72,16 @@ describe('Property 2: Input clamping and output format', () => {
         // Verificar formato hex válido
         expect(result).toMatch(/^#[0-9a-f]{6}$/)
 
-        // Verificar equivalencia con clamp
-        const clamped = !Number.isFinite(n) ? 0 : n < 0 ? 0 : n > 100 ? 100 : n
+        // Verificar equivalencia con clamp.
+        // La implementación tiene un early-return para score < 0 (devuelve gris NA).
+        // -Infinity y NaN: -Infinity < 0 → gris; NaN no cumple < 0 → cae al clamping (NaN → 0).
+        // Infinity: no cumple < 0, !isFinite → 0.
+        // Negativos finitos: < 0 → gris (equivale a pasar cualquier negativo).
+        const clamped = (Number.isFinite(n) && n < 0) || n === -Infinity
+          ? -1  // cualquier valor < 0 dispara el early-return gris
+          : !Number.isFinite(n) ? 0
+          : n > 100 ? 100
+          : n
         const expected = getTraceabilityColor(clamped)
         expect(result).toBe(expected)
       }),

@@ -47,13 +47,16 @@ const App: React.FC = () => {
     setSelectedNode(null)
   }
 
-  // Navega a una subcarpeta: actualiza la selección y centra el grafo
-  const handleFolderNavigate = (folderId: string) => {
-    const targetFolder = result?.folders.find(f => f.id === folderId)
-    if (targetFolder) {
-      setSelectedNode(targetFolder)
-    }
-    graphRef.current?.fitToNode(folderId)
+  // Navega a cualquier nodo (carpeta o módulo): actualiza la selección y centra el grafo
+  const handleNodeNavigate = (nodeId: string) => {
+    const targetFolder = result?.folders.find(f => f.id === nodeId)
+    const targetModule = result?.modules.find(m => m.id === nodeId)
+    const target = targetFolder ?? targetModule
+
+    if (!target) return  // Guard: nodo no existe, no hacer nada
+
+    setSelectedNode(target)
+    graphRef.current?.fitToNode(nodeId)
   }
 
   const showDashboard = status === 'success' && result
@@ -106,7 +109,7 @@ const App: React.FC = () => {
               clearSpecError={clearSpecError}
               allFolders={result.folders}
               allModules={result.modules}
-              onFolderNavigate={handleFolderNavigate}
+              onNodeNavigate={handleNodeNavigate}
             />
           </main>
 

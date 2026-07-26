@@ -76,3 +76,36 @@ export function truncateFolderName(name: string, maxLength: number = MAX_FOLDER_
   }
   return name.slice(0, maxLength) + '…'
 }
+
+/**
+ * Retorna los archivos directos de una carpeta, ordenados alfabéticamente
+ * (case-insensitive). Solo incluye módulos cuyo id existe en graphNodeIds.
+ */
+export function getSortedChildFiles(
+  folderId: string,
+  allModules: readonly ModuleNode[],
+  graphNodeIds: ReadonlySet<string>
+): ModuleNode[] {
+  // Filtrar módulos hijos directos que existan en el grafo
+  const directChildren = allModules.filter(
+    (mod) => mod.parentFolder === folderId && graphNodeIds.has(mod.id)
+  )
+
+  // Ordenar alfabéticamente con comparación case-insensitive (estable en motores modernos)
+  return directChildren.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  )
+}
+
+/**
+ * Busca la carpeta padre de un nodo dado.
+ * Retorna la FolderNode si existe en allFolders, o undefined si el nodo
+ * no tiene padre o si el padre no existe en la lista.
+ */
+export function getParentFolder(
+  node: { parentFolder?: string },
+  allFolders: readonly FolderNode[]
+): FolderNode | undefined {
+  if (!node.parentFolder) return undefined
+  return allFolders.find((folder) => folder.id === node.parentFolder)
+}

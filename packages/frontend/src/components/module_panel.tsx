@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClone, faDownload, faCheck } from '@fortawesome/free-solid-svg-icons'
 import type { ModuleNode, FolderNode, IntegrationNode, GraphNode } from '../types'
 import { getTraceabilityColor, getEffectiveScore } from '../constants/theme'
-import { countDirectChildren, formatChildLabel, getSortedSubfolders, truncateFolderName } from '../utils/folder_panel_helpers'
+import { countDirectChildren, formatChildLabel, getSortedSubfolders, getSortedChildFiles, getParentFolder, truncateFolderName } from '../utils/folder_panel_helpers'
 
 interface ModulePanelProps {
   node: GraphNode | null
@@ -17,11 +17,11 @@ interface ModulePanelProps {
   // Nuevas props para folder-panel-content
   allFolders?: FolderNode[]
   allModules?: ModuleNode[]
-  onFolderNavigate?: (folderId: string) => void
+  onNodeNavigate?: (nodeId: string) => void
 }
 
 // Panel lateral que muestra detalles de un nodo seleccionado (módulo, carpeta o integración)
-export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError, specErrorModules, clearSpecError, allFolders, allModules, onFolderNavigate }) => {
+export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGenerateSpec, generatingSpec, specError, specErrorModules, clearSpecError, allFolders, allModules, onNodeNavigate }) => {
   const [copied, setCopied] = useState(false)
 
   if (!node) return null
@@ -67,6 +67,26 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
               <h3 className="module-panel__section-title">Ruta</h3>
               <p className="module-panel__code">{(node as ModuleNode).path}</p>
             </section>
+
+            {/* Carpeta padre — debajo de la ruta para archivos */}
+            {(() => {
+              const parent = getParentFolder(node as { parentFolder?: string }, allFolders ?? [])
+              if (!parent) return null
+              return (
+                <section className="module-panel__section">
+                  <h3 className="module-panel__section-title">Carpeta padre</h3>
+                  <div className="module-panel__folder-buttons">
+                    <button
+                      className="module-panel__folder-btn"
+                      onClick={() => onNodeNavigate?.(parent.id)}
+                      title={parent.name}
+                    >
+                      📁 {truncateFolderName(parent.name)}
+                    </button>
+                  </div>
+                </section>
+              )
+            })()}
 
             {(node as ModuleNode).linesOfCode !== undefined && (
               <section className="module-panel__section">
@@ -250,13 +270,15 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
               )
             })()}
 
-            {/* Sección de spec EARS on-demand */}
+            {/* Sección de spec EARS on-demand — solo visible si hay spec, se está generando, o hubo error */}
             {(node as ModuleNode).specStatus !== 'na' && (() => {
               const module = node as ModuleNode
               const isGenerating = generatingSpec === module.id
               const hasSpec = !!module.earsSpec
               const hasError = specErrorModules.has(module.id)
-              const noSource = !module.sourceContent
+
+              // No mostrar la sección si no hay spec, no se está generando y no hay error
+              if (!hasSpec && !isGenerating && !hasError) return null
 
               const handleRetry = () => {
                 clearSpecError(module.id)
@@ -322,13 +344,6 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
                       </div>
                     )}
                   </div>
-
-                  {/* Caso: sin sourceContent disponible */}
-                  {noSource && !hasSpec && (
-                    <p style={{ fontSize: '0.85rem', color: '#888', fontStyle: 'italic' }}>
-                      No hay código fuente disponible para generar la spec
-                    </p>
-                  )}
 
                   {/* Caso: generando spec (spinner) */}
                   {isGenerating && !hasSpec && (
@@ -420,6 +435,26 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
               })()}
             </section>
 
+            {/* Carpeta padre — debajo de contenido para carpetas */}
+            {(() => {
+              const parent = getParentFolder(node as { parentFolder?: string }, allFolders ?? [])
+              if (!parent) return null
+              return (
+                <section className="module-panel__section">
+                  <h3 className="module-panel__section-title">Carpeta padre</h3>
+                  <div className="module-panel__folder-buttons">
+                    <button
+                      className="module-panel__folder-btn"
+                      onClick={() => onNodeNavigate?.(parent.id)}
+                      title={parent.name}
+                    >
+                      📁 {truncateFolderName(parent.name)}
+                    </button>
+                  </div>
+                </section>
+              )
+            })()}
+
             {(() => {
               const sortedSubfolders = getSortedSubfolders(node.id, allFolders ?? [])
               if (sortedSubfolders.length === 0) return null
@@ -431,10 +466,40 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
                       <button
                         key={sub.id}
                         className="module-panel__folder-btn"
-                        onClick={() => onFolderNavigate?.(sub.id)}
+                        onClick={() => onNodeNavigate?.(sub.id)}
                         title={sub.name}
                       >
                         📁 {truncateFolderName(sub.name)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )
+            })()}
+
+            {(() => {
+              const graphNodeIds = new Set([
+                ...(allModules ?? []).map(m => m.id),
+                ...(allFolders ?? []).map(f => f.id)
+              ])
+              const childFiles = getSortedChildFiles(
+                node.id,
+                allModules ?? [],
+                graphNodeIds
+              )
+              if (childFiles.length === 0) return null
+              return (
+                <section className="module-panel__section">
+                  <h3 className="module-panel__section-title">Archivos</h3>
+                  <div className="module-panel__folder-buttons">
+                    {childFiles.map((file) => (
+                      <button
+                        key={file.id}
+                        className="module-panel__folder-btn"
+                        onClick={() => onNodeNavigate?.(file.id)}
+                        title={file.name}
+                      >
+                        📄 {truncateFolderName(file.name)}
                       </button>
                     ))}
                   </div>
@@ -466,6 +531,8 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
             </section>
           </>
         )}
+
+
       </div>
     </aside>
   )

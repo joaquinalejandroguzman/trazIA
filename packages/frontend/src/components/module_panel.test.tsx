@@ -260,7 +260,7 @@ describe('Property 2: Preservation — progress bar and Spec EARS section presen
     fc.string({ minLength: 1, maxLength: 200 })
   )
 
-  it('para todo módulo con specStatus !== "na", renderiza barra de progreso y sección "Spec EARS"', () => {
+  it('para todo módulo con specStatus !== "na", renderiza barra de progreso y sección "Spec EARS" si tiene spec', () => {
     fc.assert(
       fc.property(nonNaSpecStatusArb, scoreArb, earsSpecArb, (specStatus, specHealthScore, earsSpec) => {
         const module = createTestModule({ specStatus, specHealthScore, earsSpec })
@@ -279,8 +279,12 @@ describe('Property 2: Preservation — progress bar and Spec EARS section presen
         })
         expect(hasProgressBar).toBe(true)
 
-        // Verificar presencia del título "Spec EARS"
-        expect(container.textContent).toContain('Spec EARS')
+        // "Spec EARS" solo aparece si hay spec generada
+        if (earsSpec) {
+          expect(container.textContent).toContain('Spec EARS')
+        } else {
+          expect(container.textContent).not.toContain('Spec EARS')
+        }
 
         unmount()
       }),
