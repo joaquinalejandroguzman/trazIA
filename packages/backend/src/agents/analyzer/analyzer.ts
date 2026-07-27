@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { execSync } from 'child_process'
 import type { ModuleNode, SpecStatus } from '../../shared/types'
 import { scanAllFiles, canParseImports, getFileLanguage } from '../../shared/file_scanner'
 // bedrockClient, withLlmRetry y limitedMap se usan en classify_module.ts (endpoint on-demand)
@@ -658,13 +659,18 @@ export async function analyzeRepository(repoPath: string): Promise<{ modules: Mo
     // Generar nombre legible
     const name = generateReadableName(relativePath)
 
-    // Obtener fecha de última modificación
+    // Obtener fecha de última modificación real desde el historial de git
     let lastModified: string | undefined
     try {
-      const stats = fs.statSync(filePath)
-      lastModified = stats.mtime.toISOString()
+      const gitDate = execSync(
+        `git log -1 --format=%aI -- "${relativePath}"`,
+        { cwd: repoPath, encoding: 'utf-8', timeout: 5000 }
+      ).trim()
+      if (gitDate) {
+        lastModified = gitDate
+      }
     } catch {
-      // No crítico
+      // No crítico — si git no está disponible o falla, se omite la fecha
     }
 
     // Clasificar por heurísticas (sin LLM, instantáneo)
