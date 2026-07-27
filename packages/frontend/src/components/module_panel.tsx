@@ -171,8 +171,8 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
 
               // Botón condicional según la zona efectiva
               // El caso specStatus 'na' ya retornó arriba: no llega hasta acá
-              // Zona roja (0–33): "Generar Spec", zona amarilla (34–66): "Mejorar Spec", zona verde (67–100) + traced: sin botón
-              const showButton = !(specStatus === 'traced' && effectiveScore >= 67)
+              // Ocultar si ya tiene spec generada (earsSpec presente) o si está en zona verde trazada
+              const showButton = !module.earsSpec && !(specStatus === 'traced' && effectiveScore >= 67)
               const buttonLabel = effectiveScore <= 33 ? 'Generar Spec' : 'Mejorar Spec'
 
               return (

@@ -51,7 +51,7 @@ export const RepoInput: React.FC<RepoInputProps> = ({ onAnalyze, status, onReset
             Traz<span className="repo-input__title-accent">IA</span>
           </h1>
           <p className="repo-input__subtitle">
-            Visualizador de arquitectura con trazabilidad de intención
+            Escaneá un repositorio y visualizá su arquitectura en segundos
           </p>
         </div>
       )}
@@ -107,16 +107,13 @@ export const RepoInput: React.FC<RepoInputProps> = ({ onAnalyze, status, onReset
 
       {!hasResult && (
         <>
-          <p className="repo-input__hint">
-            Solo repositorios públicos de GitHub · TypeScript / JavaScript
-          </p>
           <div className="repo-input__info-box">
             <h3 className="repo-input__info-title">¿Qué hace TrazIA?</h3>
             <ul className="repo-input__info-list">
-              <li>📊 Analiza la arquitectura de tu código sin ejecutarlo</li>
-              <li>🎨 Colorea módulos según su estado de trazabilidad</li>
-              <li>✍️ Genera specs EARS retroactivas para código sin documentar</li>
-              <li>📈 Calcula el Spec Health Score del proyecto</li>
+              <li>🗺️ Visualiza la estructura de carpetas y módulos como grafo interactivo</li>
+              <li>🔗 Detecta integraciones: bases de datos, APIs externas, SDKs</li>
+              <li>🎨 Colorea por zona: frontend, backend, shared, config</li>
+              <li>✍️ Genera specs de comportamiento para módulos sin documentar</li>
             </ul>
           </div>
         </>
