@@ -126,6 +126,19 @@ const FRONTEND_PATTERNS = [
   /\bpublic\b/i, /\bstatic\b/i, /\bassets\b/i,
   /\bsrc\/components\b/i, /\bsrc\/pages\b/i, /\bsrc\/views\b/i,
   /\btemplates\b/i, /\bsrc\/app\b/i,
+  // React / Next.js / Remix
+  /\bsrc\/hooks\b/i, /\bsrc\/contexts\b/i, /\bsrc\/stores\b/i,
+  /\bsrc\/layouts\b/i, /\bsrc\/features\b/i,
+  /\bapp\/routes\b/i,          // Remix file-based routing
+  /\bpages\b/i,                // Next.js pages dir
+  // Angular
+  /\bsrc\/app\/modules\b/i, /\bsrc\/app\/pipes\b/i, /\bsrc\/app\/directives\b/i,
+  /\bsrc\/app\/guards\b/i, /\bsrc\/app\/interceptors\b/i,
+  /\bsrc\/environments\b/i,
+  // Vue / Nuxt
+  /\bcomposables\b/i, /\bplugins\b/i, /\blayouts\b/i,
+  // Estilos y assets
+  /\bstyles\b/i, /\bfonts\b/i, /\bimages\b/i, /\bicons\b/i,
 ]
 
 // Patrones de ruta que indican zona backend
@@ -134,6 +147,39 @@ const BACKEND_PATTERNS = [
   /\bsrc\/routes\b/i, /\bsrc\/services\b/i, /\bsrc\/agents\b/i,
   /\bsrc\/controllers\b/i, /\bsrc\/models\b/i,
   /\bapp\/models\b/i, /\bapp\/views\b/i, /\bapp\/controllers\b/i,  // Rails/Django
+  // Node.js / Express / Fastify / NestJS
+  /\bsrc\/middleware\b/i, /\bsrc\/handlers\b/i, /\bsrc\/resolvers\b/i,
+  /\bsrc\/guards\b/i, /\bsrc\/interceptors\b/i, /\bsrc\/pipes\b/i,
+  /\bsrc\/modules\b/i, /\bsrc\/entities\b/i, /\bsrc\/repositories\b/i,
+  /\bsrc\/schemas\b/i, /\bsrc\/dto\b/i, /\bsrc\/dtos\b/i,
+  /\bsrc\/jobs\b/i, /\bsrc\/queues\b/i, /\bsrc\/workers\b/i,
+  /\bsrc\/cron\b/i, /\bsrc\/tasks\b/i,
+  // Django / Flask / FastAPI
+  /\bmanagement\b/i, /\bserializers\b/i, /\bviewsets\b/i,
+  /\bmigrations\b/i, /\bfixtures\b/i,
+  // Spring Boot / Java
+  /\bsrc\/main\/java\b/i, /\bsrc\/main\/resources\b/i,
+  // Go
+  /\bcmd\b/i, /\binternal\b/i, /\bpkg\b/i,
+  // Infraestructura de datos
+  /\bsrc\/database\b/i, /\bsrc\/db\b/i, /\bprisma\b/i, /\bdrizzle\b/i,
+  /\bsrc\/seeds\b/i, /\bsrc\/seeders\b/i,
+]
+
+// Nombres de archivo típicos de backend (matchean por nombre, no por ruta)
+const BACKEND_FILE_NAMES = [
+  // Django
+  /^views\.py$/i, /^models\.py$/i, /^urls\.py$/i, /^admin\.py$/i,
+  /^serializers\.py$/i, /^forms\.py$/i, /^signals\.py$/i, /^managers\.py$/i,
+  /^apps\.py$/i, /^tasks\.py$/i, /^permissions\.py$/i, /^filters\.py$/i,
+  /^middleware\.py$/i, /^consumers\.py$/i, /^routing\.py$/i,
+  // Flask / FastAPI
+  /^routes\.py$/i, /^schemas\.py$/i, /^dependencies\.py$/i, /^crud\.py$/i,
+  // Rails
+  /^schema\.rb$/i, /^routes\.rb$/i,
+  // General backend
+  /^server\.(ts|js|py|go|rs)$/i, /^app\.(py|rb)$/i,
+  /^manage\.py$/i, /^wsgi\.py$/i, /^asgi\.py$/i,
 ]
 
 // Patrones de archivos de configuración
@@ -164,6 +210,9 @@ export function detectZone(filePath: string): ProjectZone {
   if (SHARED_PATTERNS.some((p) => p.test(filePath))) return 'shared'
   if (FRONTEND_PATTERNS.some((p) => p.test(filePath))) return 'frontend'
   if (BACKEND_PATTERNS.some((p) => p.test(filePath))) return 'backend'
+
+  // Por nombre de archivo típico de backend (Django, Flask, Rails, etc.)
+  if (BACKEND_FILE_NAMES.some((p) => p.test(fileName))) return 'backend'
 
   return 'unknown'
 }

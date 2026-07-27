@@ -360,7 +360,11 @@ const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphPro
             nodeColor={(node) => {
               const graphNode = nodeById.get(node.id)
               if (!graphNode) return '#ccc'
-              if (graphNode.type === 'folder' || graphNode.type === 'module') {
+              if (graphNode.type === 'folder') {
+                const zone = detectZone(graphNode.path)
+                return ZONE_COLORS[zone].bg
+              }
+              if (graphNode.type === 'module') {
                 const zone = detectZone(graphNode.path)
                 return ZONE_COLORS[zone].border
               }
