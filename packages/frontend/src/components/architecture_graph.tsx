@@ -48,6 +48,7 @@ interface ArchitectureGraphProps {
   edges: GraphEdge[]
   onNodeClick: (node: GraphNode) => void
   selectedNodeId?: string | null
+  dimmedNodeIds?: Set<string> | null  // nodos con opacidad reducida
 }
 
 /**
@@ -59,7 +60,8 @@ function buildLayoutNodes(
   modules: ModuleNode[],
   folders: FolderNode[],
   integrations: IntegrationNode[],
-  selectedId?: string | null
+  selectedId?: string | null,
+  dimmedNodeIds?: Set<string> | null
 ): Node[] {
   const nodes: Node[] = []
 
@@ -93,6 +95,9 @@ function buildLayoutNodes(
     const isSelected = folder.id === selectedId
     const depth = computeFolderDepth(folder.id, foldersMap)
     const hierarchyFontSize = getHierarchyFontSize(depth)
+
+    // Calcular opacidad según dimming
+    const folderOpacity = dimmedNodeIds && dimmedNodeIds.has(folder.id) ? 0.25 : 1
 
     nodes.push({
       id: folder.id,
@@ -136,6 +141,8 @@ function buildLayoutNodes(
         border: `1.5px dashed ${isSelected ? '#333' : colors.border}`,
         borderRadius: 12,
         padding: 0,
+        opacity: folderOpacity,
+        transition: 'opacity 200ms ease',
       },
       type: 'folderGroup',
       draggable: false,
@@ -175,6 +182,9 @@ function buildLayoutNodes(
     // Indicador de trazabilidad: siempre visible — sin datos = score 0 (rojo)
     const effectiveScore = getEffectiveScore(mod.specStatus, mod.specHealthScore)
     const traceabilityColor = getTraceabilityColor(effectiveScore)
+
+    // Calcular opacidad según dimming
+    const modOpacity = dimmedNodeIds && dimmedNodeIds.has(mod.id) ? 0.25 : 1
 
     nodes.push({
       id: mod.id,
@@ -222,6 +232,8 @@ function buildLayoutNodes(
         display: 'flex',
         alignItems: 'center',
         overflow: 'visible',
+        opacity: modOpacity,
+        transition: 'opacity 200ms ease',
       },
       draggable: false,
       ...(mod.parentFolder ? { parentId: mod.parentFolder, extent: 'parent' as const } : {}),
@@ -233,6 +245,9 @@ function buildLayoutNodes(
     const colors = INTEGRATION_COLORS[integ.type]
     const isSelected = integ.id === selectedId
     const icon = integ.type === 'database' ? '🗄️' : '🌐'
+
+    // Calcular opacidad según dimming
+    const integOpacity = dimmedNodeIds && dimmedNodeIds.has(integ.id) ? 0.25 : 1
 
     nodes.push({
       id: integ.id,
@@ -263,6 +278,8 @@ function buildLayoutNodes(
         color: colors.text,
         boxShadow: isSelected ? '0 0 0 2px rgba(0,0,0,0.2)' : undefined,
         cursor: 'pointer',
+        opacity: integOpacity,
+        transition: 'opacity 200ms ease',
       },
       draggable: false,
     })
@@ -301,7 +318,7 @@ function buildEdges(edges: GraphEdge[], selectedNodeId?: string | null): Edge[] 
 
 // Contenido interno del grafo (con forwardRef para exponer fitToNode)
 const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphProps>(
-  ({ modules, folders, integrations, edges, onNodeClick, selectedNodeId }, ref) => {
+  ({ modules, folders, integrations, edges, onNodeClick, selectedNodeId, dimmedNodeIds }, ref) => {
     const { setCenter, getNodesBounds } = useReactFlow()
 
     const fitToNode = useCallback((nodeId: string) => {
@@ -320,8 +337,8 @@ const GraphContent = React.forwardRef<ArchitectureGraphRef, ArchitectureGraphPro
     useImperativeHandle(ref, () => ({ fitToNode }), [fitToNode])
 
     const nodes = useMemo(
-      () => buildLayoutNodes(modules, folders, integrations, selectedNodeId),
-      [modules, folders, integrations, selectedNodeId]
+      () => buildLayoutNodes(modules, folders, integrations, selectedNodeId, dimmedNodeIds),
+      [modules, folders, integrations, selectedNodeId, dimmedNodeIds]
     )
     const flowEdges = useMemo(() => buildEdges(edges, selectedNodeId), [edges, selectedNodeId])
 

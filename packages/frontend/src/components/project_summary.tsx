@@ -1,12 +1,34 @@
-import React from 'react'
-import type { AnalysisResult } from '../types'
+import React, { useState, useEffect, useMemo } from 'react'
+import type { AnalysisResult, GraphNode, SpecStatus } from '../types'
+import { computeTraceabilityDimmedIds } from '../utils/summary_panel_helpers'
+import { IntegrationList } from './integration_list'
+import { NodeSearch } from './node_search'
+import { DonutIndicator } from './donut_indicator'
 
 interface ProjectSummaryProps {
   result: AnalysisResult
+  // Callbacks para interacción con el grafo
+  onFitToNode?: (nodeId: string) => void
+  onDimNodes?: (matchingIds: Set<string>, filterType: 'search' | 'traceability') => void
+  onClearDimming?: () => void
+  // Señal externa para limpiar filtros internos (cuando el grafo recibe click directo)
+  clearFiltersSignal?: number
+  // Callback directo para filtro de trazabilidad (pasa status al hook en App)
+  onTraceabilityFilter?: (status: SpecStatus | null) => void
 }
 
-// Tarjetas de resumen del proyecto: módulos, integraciones, stack
-export const ProjectSummary: React.FC<ProjectSummaryProps> = ({ result }) => {
+// No-op por defecto para callbacks opcionales
+const noop = () => {}
+
+// Tarjetas de resumen del proyecto + sub-componentes interactivos
+export const ProjectSummary: React.FC<ProjectSummaryProps> = ({
+  result,
+  onFitToNode = noop,
+  onDimNodes = noop,
+  onClearDimming = noop,
+  clearFiltersSignal = 0,
+  onTraceabilityFilter,
+}) => {
   const {
     totalModules,
     totalIntegrations,
@@ -14,7 +36,52 @@ export const ProjectSummary: React.FC<ProjectSummaryProps> = ({ result }) => {
     integrations,
     repoUrl,
     analyzedAt,
+    tracedCount,
+    untracedCount,
+    driftCount,
   } = result
+
+  // Estado del segmento activo en el donut de trazabilidad
+  const [activeSegment, setActiveSegment] = useState<SpecStatus | null>(null)
+
+  // Resetear segmento activo cuando cambia la señal externa de limpieza
+  useEffect(() => {
+    setActiveSegment(null)
+  }, [clearFiltersSignal])
+
+  // Preparar lista unificada de todos los nodos para el buscador
+  const allNodes: GraphNode[] = useMemo(
+    () => [...result.modules, ...result.folders, ...result.integrations],
+    [result]
+  )
+
+  // --- Callbacks internos ---
+
+  // Búsqueda → dimming: emitir IDs coincidentes al padre
+  const handleSearchFilterChange = (matchingIds: Set<string> | null) => {
+    if (matchingIds === null) {
+      onClearDimming()
+    } else {
+      onDimNodes(matchingIds, 'search')
+    }
+  }
+
+  // Donut → dimming: emitir filtro de trazabilidad al padre
+  const handleSegmentClick = (status: SpecStatus | null) => {
+    setActiveSegment(status)
+    if (onTraceabilityFilter) {
+      // Usa el callback directo que invoca applyTraceabilityFilter en App
+      onTraceabilityFilter(status)
+    } else if (status === null) {
+      onClearDimming()
+    } else {
+      // Fallback: calcular IDs a dimear y enviar como filtro genérico
+      const dimmedIds = computeTraceabilityDimmedIds(result.modules, status)
+      onDimNodes(dimmedIds, 'traceability')
+    }
+  }
+
+  // --- Render helpers existentes ---
 
   // Extrae el nombre del repo de la URL para mostrarlo
   const repoName = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '')
@@ -41,6 +108,14 @@ export const ProjectSummary: React.FC<ProjectSummaryProps> = ({ result }) => {
         </div>
       </div>
 
+      {/* Buscador de nodos — justo debajo del nombre del repo */}
+      <NodeSearch
+        nodes={allNodes}
+        onSelect={onFitToNode}
+        onFilterChange={handleSearchFilterChange}
+        clearSignal={clearFiltersSignal}
+      />
+
       <div className="project-summary__cards">
         <div className="project-summary__card">
           <span className="project-summary__card-value">{totalModules}</span>
@@ -66,14 +141,19 @@ export const ProjectSummary: React.FC<ProjectSummaryProps> = ({ result }) => {
         </p>
       </div>
 
-      <div className="project-summary__agents-info">
-        <h3 className="project-summary__agents-title">Pipeline de agentes</h3>
-        <ul className="project-summary__agents-list">
-          <li>🔍 Analizador — mapea módulos y dependencias internas</li>
-          <li>🔌 Integraciones — detecta BD y APIs externas</li>
-          <li>🧩 Orquestador — arma el grafo final</li>
-        </ul>
-      </div>
+      <DonutIndicator
+        tracedCount={tracedCount}
+        untracedCount={untracedCount}
+        driftCount={driftCount}
+        totalModules={totalModules}
+        onSegmentClick={handleSegmentClick}
+        activeSegment={activeSegment}
+      />
+
+      <IntegrationList
+        integrations={integrations}
+        onNavigate={onFitToNode}
+      />
     </div>
   )
 }
