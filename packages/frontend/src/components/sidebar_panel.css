@@ -20,6 +20,7 @@
   /* Estado cerrado por defecto */
   transform: translateX(-100%);
   opacity: 0;
+  pointer-events: none;
   transition:
     transform var(--transition-close, 250ms ease-in),
     opacity var(--transition-close, 250ms ease-in);
@@ -28,6 +29,7 @@
 .sidebar-panel--open {
   transform: translateX(0);
   opacity: 1;
+  pointer-events: all;
   transition:
     transform var(--transition-open, 250ms ease-out),
     opacity var(--transition-open, 250ms ease-out);

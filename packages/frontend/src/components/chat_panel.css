@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-md);
-  transition: background var(--transition);
+  transition: background var(--transition), right 300ms ease;
 }
 
 .chat-fab:hover {
@@ -52,14 +52,14 @@
   transform: scale(1);
   opacity: 1;
   transform-origin: bottom right;
-  transition: transform 250ms ease-out, opacity 250ms ease-out;
+  transition: transform 250ms ease-out, opacity 250ms ease-out, right 300ms ease;
 }
 
 .chat-panel--closed {
   transform: scale(0);
   opacity: 0;
   pointer-events: none;
-  transition: transform 250ms ease-in, opacity 250ms ease-in;
+  transition: transform 250ms ease-in, opacity 250ms ease-in, right 300ms ease;
 }
 
 /* --- Header ------------------------------------------------------- */

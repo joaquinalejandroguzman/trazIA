@@ -23,13 +23,7 @@
   transition:
     background var(--transition, 200ms ease),
     color var(--transition, 200ms ease),
-    border-color var(--transition, 200ms ease),
-    left var(--transition-open, 250ms ease-out);
-}
-
-/* Cuando el panel está abierto, el botón se desplaza justo al borde derecho del sidebar */
-.toggle-sidebar-button[aria-expanded="true"] {
-  left: calc(var(--sidebar-width, 280px) + 8px);
+    border-color var(--transition, 200ms ease);
 }
 
 .toggle-sidebar-button:hover {
@@ -47,7 +41,7 @@
   transform: scale(0.93);
 }
 
-/* Responsive: más compacto en mobile */
+/* Mobile: más compacto y se desplaza al borde del sidebar cuando está abierto */
 @media (max-width: 767px) {
   .toggle-sidebar-button {
     top: 8px;
@@ -55,6 +49,11 @@
     width: 36px;
     height: 36px;
     font-size: 0.9rem;
+    transition:
+      background var(--transition, 200ms ease),
+      color var(--transition, 200ms ease),
+      border-color var(--transition, 200ms ease),
+      left var(--transition-open, 250ms ease-out);
   }
 
   .toggle-sidebar-button[aria-expanded="true"] {

@@ -69,16 +69,43 @@ html, body, #root {
 .app__main {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
   position: relative;
+}
+
+/* Desktop: cuando hay panel abierto, añade columna derecha */
+.app__main:has(.module-panel--open) {
+  grid-template-columns: var(--sidebar-width) 1fr var(--panel-width);
+}
+
+/* Mobile: grid de una sola columna, paneles como overlays */
+.app__main--mobile {
+  grid-template-columns: 1fr;
+}
+
+.app__main--mobile:has(.module-panel--open) {
+  grid-template-columns: 1fr;
+}
+
+.app__sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .app__graph-container {
   overflow: hidden;
   position: relative;
   background: var(--color-bg);
+  /* Asegurar que el contenedor del grafo llene el espacio disponible */
+  min-height: 0;
+  min-width: 0;
 }
 
 /* --- RepoInput ---------------------------------------------------- */
@@ -272,9 +299,14 @@ html, body, #root {
 /* --- RepoInput: Responsive icon-only buttons ---------------------- */
 .repo-input__btn-icon {
   flex-shrink: 0;
+  display: none;
 }
 
 @media (max-width: 767px) {
+  .repo-input__btn-icon {
+    display: inline-block;
+  }
+
   .repo-input__btn-text {
     display: none;
   }
@@ -457,12 +489,32 @@ html, body, #root {
 }
 
 /* --- ModulePanel -------------------------------------------------- */
+/* Desktop: panel lateral derecho como columna del grid */
 .module-panel {
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  overflow-y: auto;
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: width var(--transition), opacity var(--transition);
+  position: relative;
+  z-index: 1002;
+}
+
+.module-panel--open {
+  width: var(--panel-width);
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Mobile: panel fullscreen (Vista Completa) — se activa cuando app__main tiene --mobile */
+.app__main--mobile .module-panel {
   position: absolute;
   inset: 0;
-  background: var(--color-surface);
-  overflow-y: auto;
+  width: auto;
   z-index: var(--module-panel-z-index, 200);
+  border-left: none;
   opacity: 0;
   transform: scale(0.95);
   pointer-events: none;
@@ -471,7 +523,7 @@ html, body, #root {
     transform var(--transition-close, 250ms ease-in);
 }
 
-.module-panel--fullscreen {
+.app__main--mobile .module-panel--fullscreen {
   opacity: 1;
   transform: scale(1);
   pointer-events: all;

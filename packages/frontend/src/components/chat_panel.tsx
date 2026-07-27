@@ -5,25 +5,39 @@ import { useChat } from '../hooks/use_chat'
 import type { ModuleNode } from '../types'
 import './chat_panel.css'
 
-// Props del componente ChatPanel — controlado externamente por usePanelLayout
+// Props del componente ChatPanel
+// - En mobile: isOpen/onToggle/visible controlados externamente por usePanelLayout
+// - En desktop: isOpen/onToggle opcionales, el panel maneja su propio estado
 interface ChatPanelProps {
   modules: ModuleNode[]
   readme?: string
-  isOpen: boolean           // controlado externamente por usePanelLayout
-  onToggle: () => void      // callback para toggle
-  visible: boolean          // si false, no renderiza FAB ni panel
+  isOpen?: boolean          // si undefined, maneja estado interno
+  onToggle?: () => void     // si undefined, maneja estado interno
+  visible?: boolean         // si undefined o true, siempre renderiza
+  isRightPanelOpen?: boolean // desktop: desplaza chat a la izquierda cuando panel derecho está abierto
 }
 
 // Panel flotante de chat contextual con TrazIA
 export const ChatPanel: React.FC<ChatPanelProps> = ({
   modules,
   readme,
-  isOpen,
-  onToggle,
-  visible,
+  isOpen: externalIsOpen,
+  onToggle: externalOnToggle,
+  visible = true,
+  isRightPanelOpen = false,
 }) => {
   const { messages, isLoading, error, analyzingModules, sendMessage } = useChat({ modules, readme })
   const [inputValue, setInputValue] = useState<string>('')
+  // Estado interno para desktop (cuando no hay control externo)
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+
+  // Determina si el control es externo o interno
+  const isControlled = externalIsOpen !== undefined && externalOnToggle !== undefined
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen
+  const onToggle = isControlled ? externalOnToggle : () => setInternalIsOpen(prev => !prev)
+
+  // Desktop: desplaza el chat a la izquierda cuando el panel derecho está abierto
+  const rightOffset = isRightPanelOpen ? 'calc(var(--panel-width, 340px) + 12px + 6px)' : undefined
 
   // Refs para manejo de focus y scroll
   const inputRef = useRef<HTMLInputElement>(null)
@@ -101,6 +115,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         aria-expanded={isOpen}
         aria-label={isOpen ? 'Cerrar chat' : 'Abrir chat'}
         title={isOpen ? 'Cerrar chat' : 'Abrir chat'}
+        style={rightOffset ? { right: rightOffset } : undefined}
       >
         <FontAwesomeIcon icon={faComment} />
       </button>
@@ -110,6 +125,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         className={`chat-panel ${!isOpen ? 'chat-panel--closed' : ''}`}
         role="dialog"
         aria-label="Chat de TrazIA"
+        style={rightOffset ? { right: rightOffset } : undefined}
       >
         {/* Header */}
         <div className="chat-panel__header">

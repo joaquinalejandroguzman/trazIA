@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useAnalysis } from './hooks/use_analysis'
 import { useNodeFilter } from './hooks/use_node_filter'
 import { usePanelLayout } from './hooks/use_panel_layout'
+import { useIsMobile } from './hooks/use_is_mobile'
 import { RepoInput } from './components/repo_input'
 import { ProjectSummary } from './components/project_summary'
 import { ArchitectureGraph, type ArchitectureGraphRef } from './components/architecture_graph'
@@ -17,14 +18,14 @@ import './App.css'
 // Componente raíz de la aplicación TrazIA — orquesta el flujo completo
 const App: React.FC = () => {
   const { status, result, error, generatingSpec, specErrorModules, analyzeRepo, generateSpec, clearSpecError, clearError, reset } = useAnalysis()
-  // Guardamos el nodo seleccionado completo para poder mostrarlo en el panel
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
-  // Ref imperativa para controlar el centrado del grafo
   const graphRef = useRef<ArchitectureGraphRef>(null)
-  // Señal para limpiar filtros del panel cuando se clickea un nodo en el grafo
   const [clearFiltersSignal, setClearFiltersSignal] = useState(0)
 
-  // Hook centralizado de estado de paneles (sidebar, vista completa, chat)
+  // Detectar si es mobile para condicionar el comportamiento de paneles
+  const isMobile = useIsMobile()
+
+  // Hook de paneles — solo se usa activamente en mobile
   const {
     leftPanelOpen,
     rightPanelOpen,
@@ -47,7 +48,6 @@ const App: React.FC = () => {
     return ids
   }, [result])
 
-  // Hook de filtrado/dimming para el grafo
   const { dimmedNodeIds, applySearchFilter, applyTraceabilityFilter, clearAll } = useNodeFilter(allNodeIds)
 
   // Sincroniza el nodo seleccionado con los datos frescos de result.modules
@@ -60,15 +60,15 @@ const App: React.FC = () => {
     }
   }, [result, selectedNode])
 
-  // Focus management: al entrar en Vista Completa, mover foco al botón de cierre del panel (Req 6.6)
+  // Focus management en mobile: al entrar en Vista Completa, mover foco al botón de cierre
   useEffect(() => {
-    if (rightPanelOpen) {
+    if (isMobile && rightPanelOpen) {
       setTimeout(() => {
         const closeBtn = document.querySelector('.module-panel__close') as HTMLElement
         closeBtn?.focus()
       }, 250)
     }
-  }, [rightPanelOpen])
+  }, [rightPanelOpen, isMobile])
 
   const handleAnalyze = (repoUrl: string) => {
     setSelectedNode(null)
@@ -79,28 +79,28 @@ const App: React.FC = () => {
     await generateSpec(moduleId)
   }
 
-  // Al seleccionar un nodo en el grafo → entra en Vista Completa
   const handleNodeClick = (node: GraphNode) => {
     setSelectedNode(node)
-    openRightPanel()
+    if (isMobile) {
+      openRightPanel()
+    }
     clearAll()
     setClearFiltersSignal(prev => prev + 1)
   }
 
-  // Al cerrar el panel de detalle → sale de Vista Completa y restaura estado previo
   const handleClosePanel = () => {
     setSelectedNode(null)
-    closeRightPanel()
+    if (isMobile) {
+      closeRightPanel()
+    }
   }
 
-  // Maneja el filtro de búsqueda desde NodeSearch del ProjectSummary
   const handleDimNodes = useCallback((matchingIds: Set<string>, filterType: 'search' | 'traceability') => {
     if (filterType === 'search') {
       applySearchFilter(matchingIds)
     }
   }, [applySearchFilter])
 
-  // Maneja el filtro de trazabilidad desde el DonutIndicator
   const handleTraceabilityFilter = useCallback((status: SpecStatus | null) => {
     if (status === null) {
       clearAll()
@@ -109,12 +109,10 @@ const App: React.FC = () => {
     }
   }, [applyTraceabilityFilter, clearAll, result])
 
-  // Limpia todos los filtros de dimming
   const handleClearDimming = useCallback(() => {
     clearAll()
   }, [clearAll])
 
-  // Navega a cualquier nodo dentro de Vista Completa (Req 2.9): actualiza contenido sin cerrar/reabrir panel
   const handleNodeNavigate = (nodeId: string) => {
     const targetFolder = result?.folders.find(f => f.id === nodeId)
     const targetModule = result?.modules.find(m => m.id === nodeId)
@@ -130,41 +128,58 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      {/* Barra superior con input de URL */}
       <header className="app__header">
         <RepoInput onAnalyze={handleAnalyze} status={status} onReset={reset} />
       </header>
 
-      {/* Banner de error si falla el análisis */}
       {error && (
         <div className="app__error-container">
           <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
 
-      {/* Dashboard completo: sidebar + grafo + panel + chat */}
       {showDashboard && (
-        <main className="app__main">
-          {/* Panel lateral izquierdo — superpuesto al grafo */}
-          <SidebarPanel isOpen={leftPanelOpen}>
-            <ProjectSummary
-              result={result}
-              onFitToNode={(nodeId) => graphRef.current?.fitToNode(nodeId)}
-              onDimNodes={handleDimNodes}
-              onClearDimming={handleClearDimming}
-              clearFiltersSignal={clearFiltersSignal}
-              onTraceabilityFilter={handleTraceabilityFilter}
-            />
-            <GraphLegend />
-          </SidebarPanel>
+        <main className={`app__main ${isMobile ? 'app__main--mobile' : ''}`}>
+          {/* Desktop: sidebar siempre visible como grid column */}
+          {!isMobile && (
+            <aside className="app__sidebar">
+              <ProjectSummary
+                result={result}
+                onFitToNode={(nodeId) => graphRef.current?.fitToNode(nodeId)}
+                onDimNodes={handleDimNodes}
+                onClearDimming={handleClearDimming}
+                clearFiltersSignal={clearFiltersSignal}
+                onTraceabilityFilter={handleTraceabilityFilter}
+              />
+              <GraphLegend />
+            </aside>
+          )}
 
-          {/* Grafo interactivo — siempre 100% del contenedor */}
+          {/* Mobile: sidebar como overlay con toggle */}
+          {isMobile && (
+            <SidebarPanel isOpen={leftPanelOpen}>
+              <ProjectSummary
+                result={result}
+                onFitToNode={(nodeId) => graphRef.current?.fitToNode(nodeId)}
+                onDimNodes={handleDimNodes}
+                onClearDimming={handleClearDimming}
+                clearFiltersSignal={clearFiltersSignal}
+                onTraceabilityFilter={handleTraceabilityFilter}
+              />
+              <GraphLegend />
+            </SidebarPanel>
+          )}
+
+          {/* Grafo interactivo */}
           <section className="app__graph-container">
-            <ToggleSidebarButton
-              isExpanded={leftPanelOpen}
-              onClick={toggleLeftPanel}
-              visible={showLeftToggle}
-            />
+            {/* Toggle solo visible en mobile */}
+            {isMobile && (
+              <ToggleSidebarButton
+                isExpanded={leftPanelOpen}
+                onClick={toggleLeftPanel}
+                visible={showLeftToggle}
+              />
+            )}
             <ArchitectureGraph
               ref={graphRef}
               modules={result.modules}
@@ -177,7 +192,7 @@ const App: React.FC = () => {
             />
           </section>
 
-          {/* Panel de detalle — Vista Completa (fullscreen overlay) */}
+          {/* Panel de detalle */}
           <ModulePanel
             node={selectedNode}
             onClose={handleClosePanel}
@@ -191,13 +206,14 @@ const App: React.FC = () => {
             onNodeNavigate={handleNodeNavigate}
           />
 
-          {/* Chat contextual — posición fija, controlado por usePanelLayout */}
+          {/* Chat contextual */}
           <ChatPanel
             modules={result.modules}
             readme={result.readme}
-            isOpen={chatOpen}
-            onToggle={toggleChat}
-            visible={showChatToggle}
+            isOpen={isMobile ? chatOpen : undefined}
+            onToggle={isMobile ? toggleChat : undefined}
+            visible={isMobile ? showChatToggle : true}
+            isRightPanelOpen={!isMobile && selectedNode !== null}
           />
         </main>
       )}
