@@ -5,22 +5,23 @@ import { useChat } from '../hooks/use_chat'
 import type { ModuleNode } from '../types'
 import './chat_panel.css'
 
-// Props del componente ChatPanel — recibe datos del grafo y estado del panel de spec
+// Props del componente ChatPanel — controlado externamente por usePanelLayout
 interface ChatPanelProps {
   modules: ModuleNode[]
   readme?: string
-  isSpecPanelOpen: boolean
-  specPanelWidth?: number // default 400px
+  isOpen: boolean           // controlado externamente por usePanelLayout
+  onToggle: () => void      // callback para toggle
+  visible: boolean          // si false, no renderiza FAB ni panel
 }
 
 // Panel flotante de chat contextual con TrazIA
 export const ChatPanel: React.FC<ChatPanelProps> = ({
   modules,
   readme,
-  isSpecPanelOpen,
-  specPanelWidth = 400,
+  isOpen,
+  onToggle,
+  visible,
 }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false)
   const { messages, isLoading, error, analyzingModules, sendMessage } = useChat({ modules, readme })
   const [inputValue, setInputValue] = useState<string>('')
 
@@ -29,44 +30,36 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const fabRef = useRef<HTMLButtonElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Calcula el offset de posición según el estado del panel de spec
-  const rightOffset = isSpecPanelOpen ? specPanelWidth + -36 : 24
-
-  // Abre el panel y mueve el focus al input
-  const handleOpen = useCallback(() => {
-    setIsOpen(true)
-  }, [])
-
-  // Cierra el panel y devuelve el focus al FAB
-  const handleClose = useCallback(() => {
-    setIsOpen(false)
-    // Devolver focus al FAB después de la transición de cierre
-    setTimeout(() => {
-      fabRef.current?.focus()
-    }, 200)
-  }, [])
-
   // Focus al input cuando se abre el panel
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && visible) {
       // Esperar a que la animación de apertura inicie para hacer focus
       setTimeout(() => {
         inputRef.current?.focus()
       }, 50)
     }
-  }, [isOpen])
+  }, [isOpen, visible])
+
+  // Devolver focus al FAB cuando se cierra el panel
+  useEffect(() => {
+    if (!isOpen && visible) {
+      setTimeout(() => {
+        fabRef.current?.focus()
+      }, 200)
+    }
+  }, [isOpen, visible])
 
   // Listener de tecla Escape para cerrar el panel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        handleClose()
+      if (e.key === 'Escape' && isOpen && visible) {
+        onToggle()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, handleClose])
+  }, [isOpen, visible, onToggle])
 
   // Scroll automático al último mensaje cuando llega una respuesta
   useEffect(() => {
@@ -93,16 +86,21 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     [handleSend]
   )
 
+  // Cuando visible=false, no renderizar FAB ni panel (pero mantener estado interno intacto)
+  if (!visible) {
+    return null
+  }
+
   return (
     <>
-      {/* Botón flotante (FAB) — visible siempre */}
+      {/* Botón flotante (FAB) — esquina inferior derecha */}
       <button
         ref={fabRef}
         className="chat-fab"
-        onClick={handleOpen}
-        style={{ right: `${rightOffset}px` }}
-        aria-label="Abrir chat de TrazIA"
-        title="Abrir chat"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-label={isOpen ? 'Cerrar chat' : 'Abrir chat'}
+        title={isOpen ? 'Cerrar chat' : 'Abrir chat'}
       >
         <FontAwesomeIcon icon={faComment} />
       </button>
@@ -110,7 +108,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       {/* Panel de chat */}
       <div
         className={`chat-panel ${!isOpen ? 'chat-panel--closed' : ''}`}
-        style={{ right: `${rightOffset}px` }}
         role="dialog"
         aria-label="Chat de TrazIA"
       >
@@ -119,7 +116,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           <span className="chat-panel__title">TrazIA Chat</span>
           <button
             className="chat-panel__close"
-            onClick={handleClose}
+            onClick={onToggle}
             aria-label="Cerrar chat"
             title="Cerrar"
           >

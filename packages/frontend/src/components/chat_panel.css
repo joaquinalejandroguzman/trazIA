@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-md);
-  transition: background var(--transition), right 300ms ease;
+  transition: background var(--transition);
 }
 
 .chat-fab:hover {
@@ -48,18 +48,18 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Animación de apertura/cierre */
+  /* Animación de apertura/cierre desde esquina inferior derecha */
   transform: scale(1);
   opacity: 1;
   transform-origin: bottom right;
-  transition: transform 300ms ease-out, opacity 300ms ease-out, right 300ms ease;
+  transition: transform 250ms ease-out, opacity 250ms ease-out;
 }
 
 .chat-panel--closed {
   transform: scale(0);
   opacity: 0;
   pointer-events: none;
-  transition: transform 200ms ease-in, opacity 200ms ease-in, right 300ms ease;
+  transition: transform 250ms ease-in, opacity 250ms ease-in;
 }
 
 /* --- Header ------------------------------------------------------- */

@@ -32,7 +32,7 @@ export const ModulePanel: React.FC<ModulePanelProps> = ({ node, onClose, onGener
 
   return (
     <aside
-      className={`module-panel ${node ? 'module-panel--open' : ''}`}
+      className={`module-panel ${node ? 'module-panel--fullscreen' : ''}`}
       role="complementary"
       aria-label="Detalles del nodo"
     >

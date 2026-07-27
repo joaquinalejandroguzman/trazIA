@@ -30,6 +30,12 @@
   --panel-width: 340px;
   --header-height: 72px;
   --transition: 200ms ease;
+  --transition-open: 250ms ease-out;
+  --transition-close: 250ms ease-in;
+  --sidebar-z-index: 100;
+  --module-panel-z-index: 200;
+  --chat-fab-z-index: 90;
+  --chat-panel-z-index: 95;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
   color: var(--color-text);
@@ -63,30 +69,16 @@ html, body, #root {
 .app__main {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: 1fr;
   grid-template-rows: 1fr;
   overflow: hidden;
-}
-
-.app__sidebar {
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  position: relative;
 }
 
 .app__graph-container {
   overflow: hidden;
   position: relative;
   background: var(--color-bg);
-}
-
-/* Cuando hay panel lateral abierto, el grafo se estrecha */
-.app__main:has(.module-panel--open) {
-  grid-template-columns: var(--sidebar-width) 1fr var(--panel-width);
 }
 
 /* --- RepoInput ---------------------------------------------------- */
@@ -277,6 +269,22 @@ html, body, #root {
   to { transform: rotate(360deg); }
 }
 
+/* --- RepoInput: Responsive icon-only buttons ---------------------- */
+.repo-input__btn-icon {
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .repo-input__btn-text {
+    display: none;
+  }
+
+  .repo-input__btn {
+    padding: 12px 14px;
+    font-size: 1rem;
+  }
+}
+
 /* --- ProjectSummary ----------------------------------------------- */
 .project-summary {
   background: var(--color-surface-2);
@@ -450,22 +458,26 @@ html, body, #root {
 
 /* --- ModulePanel -------------------------------------------------- */
 .module-panel {
+  position: absolute;
+  inset: 0;
   background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
   overflow-y: auto;
-  width: 0;
+  z-index: var(--module-panel-z-index, 200);
   opacity: 0;
+  transform: scale(0.95);
   pointer-events: none;
-  transition: width var(--transition), opacity var(--transition);
-  /* z-index 1002: prioridad visual sobre ChatPanel (1001) y FAB (1000) */
-  position: relative;
-  z-index: 1002;
+  transition:
+    opacity var(--transition-close, 250ms ease-in),
+    transform var(--transition-close, 250ms ease-in);
 }
 
-.module-panel--open {
-  width: var(--panel-width);
+.module-panel--fullscreen {
   opacity: 1;
+  transform: scale(1);
   pointer-events: all;
+  transition:
+    opacity var(--transition-open, 250ms ease-out),
+    transform var(--transition-open, 250ms ease-out);
 }
 
 .module-panel__header {
@@ -736,6 +748,29 @@ html, body, #root {
   font-size: 0.75rem;
   color: var(--color-text-muted);
   text-align: center;
+}
+
+/* --- Chat FAB visibility ------------------------------------------ */
+.chat-fab--visible {
+  opacity: 1;
+  pointer-events: all;
+  transition: opacity var(--transition-open, 250ms ease-out);
+}
+
+.chat-fab--hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-close, 250ms ease-in);
+}
+
+/* --- Reduced motion ----------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .module-panel,
+  .module-panel--fullscreen,
+  .chat-fab--visible,
+  .chat-fab--hidden {
+    transition-duration: 0ms;
+  }
 }
 
 /* --- ErrorBanner -------------------------------------------------- */

@@ -1,0 +1,70 @@
+/* ===================================================================
+   ToggleSidebarButton — Botón toggle del panel lateral izquierdo
+   Estilos coherentes con el sistema de diseño de TrazIA
+   =================================================================== */
+
+.toggle-sidebar-button {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: calc(var(--sidebar-z-index, 100) + 1);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border, #2d3148);
+  background: var(--color-surface, #1a1d27);
+  color: var(--color-text-muted, #8892a4);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.4));
+  transition:
+    background var(--transition, 200ms ease),
+    color var(--transition, 200ms ease),
+    border-color var(--transition, 200ms ease),
+    left var(--transition-open, 250ms ease-out);
+}
+
+/* Cuando el panel está abierto, el botón se desplaza justo al borde derecho del sidebar */
+.toggle-sidebar-button[aria-expanded="true"] {
+  left: calc(var(--sidebar-width, 280px) + 8px);
+}
+
+.toggle-sidebar-button:hover {
+  background: var(--color-surface-2, #22263a);
+  color: var(--color-text, #e8ecf0);
+  border-color: var(--color-accent, #4f8ef7);
+}
+
+.toggle-sidebar-button:focus-visible {
+  outline: 2px solid var(--color-accent, #4f8ef7);
+  outline-offset: 2px;
+}
+
+.toggle-sidebar-button:active {
+  transform: scale(0.93);
+}
+
+/* Responsive: más compacto en mobile */
+@media (max-width: 767px) {
+  .toggle-sidebar-button {
+    top: 8px;
+    left: 8px;
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+
+  .toggle-sidebar-button[aria-expanded="true"] {
+    left: calc(var(--sidebar-width, 280px) + 6px);
+  }
+}
+
+/* Respetar preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .toggle-sidebar-button {
+    transition-duration: 0ms;
+  }
+}

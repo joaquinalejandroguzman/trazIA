@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faHouse, faMagnifyingGlassChart } from '@fortawesome/free-solid-svg-icons'
 import type { AnalysisStatus } from '../types'
 
 interface RepoInputProps {
@@ -80,10 +82,13 @@ export const RepoInput: React.FC<RepoInputProps> = ({ onAnalyze, status, onReset
             {isLoading ? (
               <>
                 <span className="repo-input__spinner" aria-hidden="true" />
-                Analizando…
+                <span className="repo-input__btn-text">Analizando…</span>
               </>
             ) : (
-              'Analizar'
+              <>
+                <FontAwesomeIcon icon={faMagnifyingGlassChart} className="repo-input__btn-icon" aria-hidden="true" />
+                <span className="repo-input__btn-text">Analizar</span>
+              </>
             )}
           </button>
 
@@ -93,7 +98,8 @@ export const RepoInput: React.FC<RepoInputProps> = ({ onAnalyze, status, onReset
               className="repo-input__btn repo-input__btn--secondary"
               onClick={handleReset}
             >
-              Nuevo repo
+              <FontAwesomeIcon icon={faHouse} className="repo-input__btn-icon" aria-hidden="true" />
+              <span className="repo-input__btn-text">Nuevo repo</span>
             </button>
           )}
         </div>
