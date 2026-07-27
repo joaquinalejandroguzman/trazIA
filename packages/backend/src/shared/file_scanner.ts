@@ -26,8 +26,8 @@ const IGNORED_DIRS = new Set([
   '.idea', '.vscode',
   // Migraciones de ORM (generadas automáticamente, no reflejan arquitectura)
   'migrations', 'migrate',
-  // Assets puramente binarios (imágenes, fonts, media) — sin posibilidad de código
-  'images', 'icons', 'fonts', 'media',
+  // Assets / recursos estáticos (no representan arquitectura)
+  'assets', 'static', 'images', 'icons', 'fonts', 'media',
   'img', 'pictures', 'illustrations',
   // Librerías vendored / copiadas
   'lib', 'third_party', 'third-party', 'external', 'libs',
@@ -47,102 +47,6 @@ const IGNORED_DIRS = new Set([
   // Proyecto propio
   '.kiro',
 ])
-
-// Directorios que se escanean con filtro estricto: solo código custom del dev
-// (no vendor, no minificado, no binarios)
-const STRICT_FILTER_DIRS = new Set([
-  'assets', 'static', 'public',
-])
-
-// Extensiones permitidas dentro de directorios con filtro estricto
-const STRICT_ALLOWED_EXTENSIONS = new Set([
-  '.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs',
-  '.py', '.rb', '.php', '.go', '.rs', '.java', '.kt', '.scala',
-  '.cs', '.swift', '.dart',
-])
-
-// Tamaño máximo para considerar código custom (no vendor) — 20KB
-const MAX_CUSTOM_FILE_SIZE = 20 * 1024
-
-// Patrones de nombre que indican vendor/third-party
-const VENDOR_NAME_PATTERNS = [
-  /jquery/i, /bootstrap/i, /polyfill/i, /vendor/i,
-  /analytics/i, /gtm/i, /modernizr/i, /lodash/i,
-  /moment/i, /axios\.min/i, /react\.production/i,
-  /angular\.min/i, /vue\.min/i, /three\.min/i,
-  /d3\.min/i, /chart\.min/i, /highlight/i,
-]
-
-/**
- * Determina si un archivo dentro de un directorio estricto (static/, assets/, public/)
- * es código custom escrito por el dev (no vendor/generado).
- */
-function isCustomDevFile(fileName: string, filePath: string): boolean {
-  // Solo extensiones de código fuente
-  const ext = path.extname(fileName).toLowerCase()
-  if (!STRICT_ALLOWED_EXTENSIONS.has(ext)) return false
-
-  // Nombre no huele a vendor
-  if (VENDOR_NAME_PATTERNS.some(p => p.test(fileName))) return false
-
-  // No minificado/bundled por nombre
-  if (/\.min\./.test(fileName) || /\.bundle\./.test(fileName) || /\.chunk\./.test(fileName)) return false
-
-  // Tamaño razonable para código custom
-  try {
-    const stats = fs.statSync(filePath)
-    if (stats.size > MAX_CUSTOM_FILE_SIZE) return false
-    if (stats.size === 0) return false
-  } catch { return false }
-
-  // Verificar contenido: no minificado, no vendor banner
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8')
-    const lines = content.split('\n')
-    // Líneas promedio muy largas → probablemente minificado
-    const avgLineLength = content.length / Math.max(lines.length, 1)
-    if (avgLineLength > 200) return false
-    // Banner de licencia en las primeras 3 líneas → vendor
-    const header = lines.slice(0, 3).join(' ')
-    if (/@license|@preserve|©|\bMIT\b|\bBSD\b|\bApache\b/i.test(header)) return false
-  } catch { return false }
-
-  return true
-}
-
-/**
- * Escanea un directorio "estricto" (static/, assets/, public/) incluyendo
- * solo archivos de código custom del dev.
- */
-function scanStrictDir(dir: string, baseDir: string): string[] {
-  const results: string[] = []
-
-  let entries: fs.Dirent[]
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return results
-  }
-
-  for (const entry of entries) {
-    if (entry.isDirectory() && entry.name.startsWith('.')) continue
-    // Dentro de un dir estricto, seguir ignorando dirs que son puro ruido
-    if (IGNORED_DIRS.has(entry.name)) continue
-
-    const fullPath = path.join(dir, entry.name)
-
-    if (entry.isDirectory()) {
-      // Recursión: subdirectorios dentro de static/ también son estrictos
-      results.push(...scanStrictDir(fullPath, baseDir))
-    } else if (entry.isFile()) {
-      if (isCustomDevFile(entry.name, fullPath)) {
-        results.push(fullPath)
-      }
-    }
-  }
-
-  return results
-}
 
 // Extensiones de archivos binarios/assets que NO aportan a la estructura del sistema
 const EXCLUDED_EXTENSIONS = new Set([
@@ -268,12 +172,7 @@ export function scanAllFiles(dir: string, baseDir: string): string[] {
     const fullPath = path.join(dir, entry.name)
 
     if (entry.isDirectory()) {
-      // Directorios estrictos: escanear solo código custom del dev
-      if (STRICT_FILTER_DIRS.has(entry.name)) {
-        results.push(...scanStrictDir(fullPath, baseDir))
-      } else {
-        results.push(...scanAllFiles(fullPath, baseDir))
-      }
+      results.push(...scanAllFiles(fullPath, baseDir))
     } else if (entry.isFile()) {
       if (!isExcludedFile(entry.name, fullPath)) {
         results.push(fullPath)
