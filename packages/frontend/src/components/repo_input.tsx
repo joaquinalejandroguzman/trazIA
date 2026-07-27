@@ -107,6 +107,9 @@ export const RepoInput: React.FC<RepoInputProps> = ({ onAnalyze, status, onReset
 
       {!hasResult && (
         <>
+          <p className="repo-input__hint">
+            Solo repositorios públicos de GitHub
+          </p>
           <div className="repo-input__info-box">
             <h3 className="repo-input__info-title">¿Qué hace TrazIA?</h3>
             <ul className="repo-input__info-list">
