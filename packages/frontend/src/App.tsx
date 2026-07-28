@@ -10,6 +10,7 @@ import { GraphLegend } from './components/graph_legend'
 import { ModulePanel } from './components/module_panel'
 import { ChatPanel } from './components/chat_panel'
 import { ErrorBanner } from './components/error_banner'
+import { Footer } from './components/footer'
 import { ToggleSidebarButton } from './components/toggle_sidebar_button'
 import { SidebarPanel } from './components/sidebar_panel'
 import type { GraphNode, SpecStatus } from './types'
@@ -137,6 +138,8 @@ const App: React.FC = () => {
           <ErrorBanner message={error} onDismiss={clearError} />
         </div>
       )}
+
+      {!showDashboard && <Footer />}
 
       {showDashboard && (
         <main className={`app__main ${isMobile ? 'app__main--mobile' : ''}`}>
